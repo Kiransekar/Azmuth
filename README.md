@@ -436,15 +436,18 @@ The following bugs were identified and fixed during code review:
 | 13 | `rtl/core/riscv_core.v` | CSR read data never written to register file | Added `is_csr_read` to wb_data mux and `OPCODE_SYSTEM` to writeback condition |
 | 14 | `rtl/nvm/nvm_ctrl.v` | `calc_ecc` was simplified XOR of all bits; `correct_data` was a no-op | Replaced with proper Hamming(38,32) SEC code with syndrome-based single-bit error correction |
 | 15 | `rtl/eml/eml_unit.v` | `compute_exp`/`compute_ln` were pass-through placeholders | Replaced with Q16.16 fixed-point polynomial approximations (exp via 2^(x/ln2) decomposition, ln via log2+polynomial) |
+| 16 | `rtl/nvm/nvm_ctrl.v` | NVM reset had 2000+ lines of manual initialization for only 1024 entries | Replaced with compact for-loop initializing all 65536 entries; reduced file from 2257 to 211 lines |
+| 17 | `rtl/nvm/nvm_ctrl.v` | ECC was SEC (6-bit) only — no double-bit error detection | Upgraded to 7-bit SECDED: bit[6]=overall parity covering data+check bits; syndrome+parity distinguishes single vs double errors |
+| 18 | `rtl/core/riscv_core.v` | `is_load` declared both at line 414 and line 482 | Removed duplicate declaration; shared `is_load` wire used for both mem_addr generation and wb_data mux |
+| 19 | `rtl/core/riscv_core.v` | Load instructions wrote ALU result (address) instead of memory data | Added `is_load ? mem_rdata` to wb_data mux so loads correctly write loaded data |
+| 20 | `rtl/eml/eml_unit.v` | `compute_ln` used `while` loops that may not synthesize | Replaced with fixed for-loop priority encoder to find MSB, then conditional normalization |
+| 21 | `rtl/nvm/nvm_ctrl.v` | `init_idx` declared inside procedural block (invalid Verilog) | Moved `integer init_idx` declaration to module-level internal signals |
 
 ### Remaining TODOs
 
-- NVM reset only initializes first 1024 entries; use `for` loop or `$readmemh` for full initialization
 - `riscv_core` `regfile[0]` not explicitly initialized (relies on RISC-V x0=0 convention)
-- NVM full SECDED requires 7th overall parity bit (currently SEC only with 6 bits)
 - `compute_exp` negative input handling is approximate (clamps to small value); proper sub-unity range needed
-- `compute_ln` `while` loops for normalization may not synthesize; replace with leading-zero counter
-- Load data path: `mem_rdata` not used for load writeback (loads write ALU result = address)
+- EML unit: exp/ln only tested with Q16.16 positive inputs; negative/zero edge cases may have accuracy issues
 
 ---
 
