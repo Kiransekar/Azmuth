@@ -1,0 +1,145 @@
+pin_number,pin_name,pin_type,function_group,voltage_domain,io_standard,usage_notes
+1,VDD_1V8,POWER,IO_POWER,1.8V,NA,IO and NVM power supply
+2,GND,GROUND,POWER_GND,0V,NA,Ground reference
+3,GND,GROUND,POWER_GND,0V,NA,Ground reference
+4,jtag_tck,INPUT,JTAG_CTRL,1.8V,CMOS,Clock for JTAG TAP
+5,jtag_tms,INPUT,JTAG_CTRL,1.8V,CMOS,Mode select for JTAG
+6,jtag_tdi,INPUT,JTAG_CTRL,1.8V,CMOS,Data input for JTAG
+7,jtag_tdo,OUTPUT,JTAG_CTRL,1.8V,CMOS,Data output from JTAG
+8,jtag_trst,INPUT,JTAG_CTRL,1.8V,CMOS,Test reset input
+9,spi_clk,INPUT,SPI_INTERFACE,1.8V,CMOS,SPI clock from master
+10,spi_mosi,INPUT,SPI_INTERFACE,1.8V,CMOS,SPI master-out-slave-in
+11,spi_miso,OUTPUT,SPI_INTERFACE,1.8V,CMOS,SPI master-in-slave-out
+12,spi_cs,INPUT,SPI_INTERFACE,1.8V,CMOS,SPI chip select
+13,uart_tx,OUTPUT,UART_INTERFACE,1.8V,CMOS,UART transmit
+14,uart_rx,INPUT,UART_INTERFACE,1.8V,CMOS,UART receive
+15,uart_rts,OUTPUT,UART_INTERFACE,1.8V,CMOS,UART ready-to-send
+16,uart_cts,INPUT,UART_INTERFACE,1.8V,CMOS,UART clear-to-send
+17,i_clk,INPUT,CLOCK_INPUT,1.8V,CMOS,Main processor clock (250MHz)
+18,i_clk_snn,INPUT,CLOCK_INPUT,1.8V,CMOS,SNN domain clock (125MHz)
+19,i_rst,INPUT,RESET_CTRL,1.8V,CMOS,Primary reset input
+20,o_irq,OUTPUT,INTERRUPT,1.8V,CMOS,Interrupt request
+21,adc_iq_p,INPUT,ADC_INTERFACE,1.8V,Analog,I/Q ADC positive input
+22,adc_iq_n,INPUT,ADC_INTERFACE,1.8V,Analog,I/Q ADC negative input
+23,rf_clk,INPUT,ADC_INTERFACE,1.8V,CMOS,RF sampling clock
+24,VDD_CORE,POWER,CORE_POWER,1.2V,NA,Core logic power supply
+25,GND,GROUND,POWER_GND,0V,NA,Ground reference
+26,GND,GROUND,POWER_GND,0V,NA,Ground reference
+27,VDD_SNN,POWER,SNN_POWER,0.9V,NA,SNN domain power supply
+28,GND,GROUND,POWER_GND,0V,NA,Ground reference
+29,debug_uart[0],OUTPUT,DEBUG,1.8V,CMOS,Debug UART bit 0
+30,debug_uart[1],OUTPUT,DEBUG,1.8V,CMOS,Debug UART bit 1
+31,debug_uart[2],OUTPUT,DEBUG,1.8V,CMOS,Debug UART bit 2
+32,debug_uart[3],OUTPUT,DEBUG,1.8V,CMOS,Debug UART bit 3
+33,debug_uart[4],OUTPUT,DEBUG,1.8V,CMOS,Debug UART bit 4
+34,debug_uart[5],OUTPUT,DEBUG,1.8V,CMOS,Debug UART bit 5
+35,debug_uart[6],OUTPUT,DEBUG,1.8V,CMOS,Debug UART bit 6
+36,debug_uart[7],OUTPUT,DEBUG,1.8V,CMOS,Debug UART bit 7
+37,nvm_ce,OUTPUT,NVM_CTRL,1.8V,CMOS,NVM chip enable
+38,nvm_oe,OUTPUT,NVM_CTRL,1.8V,CMOS,NVM output enable
+39,nvm_we,OUTPUT,NVM_CTRL,1.8V,CMOS,NVM write enable
+40,nvm_addr[0],OUTPUT,NVM_CTRL,1.8V,CMOS,NVM address bit 0
+41,nvm_addr[1],OUTPUT,NVM_CTRL,1.8V,CMOS,NVM address bit 1
+42,nvm_addr[2],OUTPUT,NVM_CTRL,1.8V,CMOS,NVM address bit 2
+43,nvm_addr[3],OUTPUT,NVM_CTRL,1.8V,CMOS,NVM address bit 3
+44,nvm_addr[4],OUTPUT,NVM_CTRL,1.8V,CMOS,NVM address bit 4
+45,nvm_addr[5],OUTPUT,NVM_CTRL,1.8V,CMOS,NVM address bit 5
+46,nvm_addr[6],OUTPUT,NVM_CTRL,1.8V,CMOS,NVM address bit 6
+47,nvm_addr[7],OUTPUT,NVM_CTRL,1.8V,CMOS,NVM address bit 7
+48,nvm_addr[8],OUTPUT,NVM_CTRL,1.8V,CMOS,NVM address bit 8
+49,nvm_addr[9],OUTPUT,NVM_CTRL,1.8V,CMOS,NVM address bit 9
+50,nvm_data[0],INOUT,NVM_CTRL,1.8V,CMOS,NVM data bit 0
+51,nvm_data[1],INOUT,NVM_CTRL,1.8V,CMOS,NVM data bit 1
+52,nvm_data[2],INOUT,NVM_CTRL,1.8V,CMOS,NVM data bit 2
+53,nvm_data[3],INOUT,NVM_CTRL,1.8V,CMOS,NVM data bit 3
+54,nvm_data[4],INOUT,NVM_CTRL,1.8V,CMOS,NVM data bit 4
+55,nvm_data[5],INOUT,NVM_CTRL,1.8V,CMOS,NVM data bit 5
+56,nvm_data[6],INOUT,NVM_CTRL,1.8V,CMOS,NVM data bit 6
+57,nvm_data[7],INOUT,NVM_CTRL,1.8V,CMOS,NVM data bit 7
+58,axi_awaddr[0],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write address bit 0
+59,axi_awaddr[1],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write address bit 1
+60,axi_awaddr[2],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write address bit 2
+61,axi_awaddr[3],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write address bit 3
+62,axi_awaddr[4],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write address bit 4
+63,axi_awaddr[5],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write address bit 5
+64,axi_awvalid,OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write valid
+65,axi_awready,INPUT,AXI_INTERFACE,1.2V,CMOS,AXI write ready
+66,axi_wdata[0],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write data bit 0
+67,axi_wdata[1],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write data bit 1
+68,axi_wdata[2],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write data bit 2
+69,axi_wdata[3],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write data bit 3
+70,axi_wstrb[0],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write strobe bit 0
+71,axi_wvalid,OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write valid
+72,axi_wready,INPUT,AXI_INTERFACE,1.2V,CMOS,AXI write ready
+73,axi_bresp[0],INPUT,AXI_INTERFACE,1.2V,CMOS,AXI write response bit 0
+74,axi_bvalid,INPUT,AXI_INTERFACE,1.2V,CMOS,AXI write valid
+75,axi_bready,OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI write ready
+76,axi_araddr[0],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI read address bit 0
+77,axi_araddr[1],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI read address bit 1
+78,axi_araddr[2],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI read address bit 2
+79,axi_araddr[3],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI read address bit 3
+80,axi_araddr[4],OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI read address bit 4
+81,axi_arvalid,OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI read valid
+82,axi_arready,INPUT,AXI_INTERFACE,1.2V,CMOS,AXI read ready
+83,axi_rdata[0],INPUT,AXI_INTERFACE,1.2V,CMOS,AXI read data bit 0
+84,axi_rdata[1],INPUT,AXI_INTERFACE,1.2V,CMOS,AXI read data bit 1
+85,axi_rdata[2],INPUT,AXI_INTERFACE,1.2V,CMOS,AXI read data bit 2
+86,axi_rdata[3],INPUT,AXI_INTERFACE,1.2V,CMOS,AXI read data bit 3
+87,axi_rresp[0],INPUT,AXI_INTERFACE,1.2V,CMOS,AXI read response bit 0
+88,axi_rvalid,INPUT,AXI_INTERFACE,1.2V,CMOS,AXI read valid
+89,axi_rready,OUTPUT,AXI_INTERFACE,1.2V,CMOS,AXI read ready
+90,snne_input[0],INPUT,SNN_INTERFACE,0.9V,CMOS,SNN event input bit 0
+91,snne_input[1],INPUT,SNN_INTERFACE,0.9V,CMOS,SNN event input bit 1
+92,snne_input[2],INPUT,SNN_INTERFACE,0.9V,CMOS,SNN event input bit 2
+93,snne_input[3],INPUT,SNN_INTERFACE,0.9V,CMOS,SNN event input bit 3
+94,snn_output[0],OUTPUT,SNN_INTERFACE,0.9V,CMOS,SNN output bit 0
+95,snn_output[1],OUTPUT,SNN_INTERFACE,0.9V,CMOS,SNN output bit 1
+96,snn_output[2],OUTPUT,SNN_INTERFACE,0.9V,CMOS,SNN output bit 2
+97,snn_output[3],OUTPUT,SNN_INTERFACE,0.9V,CMOS,SNN output bit 3
+98,eml_input[0],INPUT,EML_INTERFACE,1.2V,CMOS,EML input bit 0
+99,eml_input[1],INPUT,EML_INTERFACE,1.2V,CMOS,EML input bit 1
+100,eml_input[2],INPUT,EML_INTERFACE,1.2V,CMOS,EML input bit 2
+101,eml_input[3],INPUT,EML_INTERFACE,1.2V,CMOS,EML input bit 3
+102,eml_output[0],OUTPUT,EML_INTERFACE,1.2V,CMOS,EML output bit 0
+103,eml_output[1],OUTPUT,EML_INTERFACE,1.2V,CMOS,EML output bit 1
+104,eml_output[2],OUTPUT,EML_INTERFACE,1.2V,CMOS,EML output bit 2
+105,eml_output[3],OUTPUT,EML_INTERFACE,1.2V,CMOS,EML output bit 3
+106,test_mode,INPUT,TEST_CTRL,1.8V,CMOS,Test mode enable
+107,scan_in_1,INPUT,TEST_CTRL,1.2V,CMOS,Scan chain input 1
+108,scan_in_2,INPUT,TEST_CTRL,1.2V,CMOS,Scan chain input 2
+109,scan_in_3,INPUT,TEST_CTRL,1.2V,CMOS,Scan chain input 3
+110,scan_in_4,INPUT,TEST_CTRL,1.2V,CMOS,Scan chain input 4
+111,scan_out_1,OUTPUT,TEST_CTRL,1.2V,CMOS,Scan chain output 1
+112,scan_out_2,OUTPUT,TEST_CTRL,1.2V,CMOS,Scan chain output 2
+113,scan_out_3,OUTPUT,TEST_CTRL,1.2V,CMOS,Scan chain output 3
+114,scan_out_4,OUTPUT,TEST_CTRL,1.2V,CMOS,Scan chain output 4
+115,scan_enable,INPUT,TEST_CTRL,1.2V,CMOS,Scan enable signal
+116,scan_reset,INPUT,TEST_CTRL,1.2V,CMOS,Scan reset signal
+117,bist_start,INPUT,TEST_CTRL,1.2V,CMOS,BIST start signal
+118,bist_done,OUTPUT,TEST_CTRL,1.2V,CMOS,BIST done signal
+119,bist_pass,OUTPUT,TEST_CTRL,1.2V,CMOS,BIST pass signal
+120,bist_error,OUTPUT,TEST_CTRL,1.2V,CMOS,BIST error signal
+121,clk_gate_en,INPUT,POWER_CTRL,1.2V,CMOS,Clock gating enable
+122,power_gate_en,INPUT,POWER_CTRL,1.2V,CMOS,Power gating enable
+123,thermal_alert,OUTPUT,MONITOR,1.8V,CMOS,Thermal alert signal
+124,temp_sense,ANALOG,MONITOR,NA,Analog,Temperature sense
+125,pll_lock,OUTPUT,CLOCK_CTRL,1.2V,CMOS,PLL lock indicator
+126,clk_ref,INPUT,CLOCK_CTRL,1.8V,CMOS,Reference clock input
+127,debug_en,INPUT,DEBUG,1.8V,CMOS,Debug enable
+128,VDD_1V2,POWER,CORE_POWER,1.2V,NA,Additional core power
+129,GND,GROUND,POWER_GND,0V,NA,Ground reference
+130,GND,GROUND,POWER_GND,0V,NA,Ground reference
+131,GND,GROUND,POWER_GND,0V,NA,Ground reference
+132,GND,GROUND,POWER_GND,0V,NA,Ground reference
+133,GND,GROUND,POWER_GND,0V,NA,Ground reference
+134,GND,GROUND,POWER_GND,0V,NA,Ground reference
+135,GND,GROUND,POWER_GND,0V,NA,Ground reference
+136,GND,GROUND,POWER_GND,0V,NA,Ground reference
+137,GND,GROUND,POWER_GND,0V,NA,Ground reference
+138,GND,GROUND,POWER_GND,0V,NA,Ground reference
+139,GND,GROUND,POWER_GND,0V,NA,Ground reference
+140,GND,GROUND,POWER_GND,0V,NA,Ground reference
+141,GND,GROUND,POWER_GND,0V,NA,Ground reference
+142,GND,GROUND,POWER_GND,0V,NA,Ground reference
+143,GND,GROUND,POWER_GND,0V,NA,Ground reference
+144,GND,GROUND,POWER_GND,0V,NA,Ground reference

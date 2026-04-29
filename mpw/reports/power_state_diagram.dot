@@ -1,0 +1,37 @@
+digraph PowerStates {
+    rankdir=LR;
+    node [shape=ellipse, style=filled, fillcolor=lightblue];
+
+    // Domain: PD_EML, PD_SNN, PD_NVM (PD_CORE always active)
+
+    // EML Domain States
+    EML_ACTIVE  [label="EML_ACTIVE\n1.2V | 250MHz\nclk_eml_gated=1"];
+    EML_SLEEP   [label="EML_SLEEP\n0V | isolated\nclk_eml_gated=0\ntile_sleep[1]=1"];
+
+    // SNN Domain States
+    SNN_ACTIVE  [label="SNN_ACTIVE\n0.9V | 125MHz\nclk_snn_gated=1"];
+    SNN_SLEEP   [label="SNN_SLEEP\n0V | isolated\nclk_snn_gated=0\ntile_sleep[2]=1"];
+
+    // NVM Domain States
+    NVM_ACTIVE  [label="NVM_ACTIVE\n1.8V | 250MHz\nclk_nvm_gated=1"];
+    NVM_RETENTION [label="NVM_RETENTION\n0.8V | retention\nstate preserved"];
+    NVM_OFF     [label="NVM_OFF\n0V | isolated\nclk_nvm_gated=0"];
+
+    // EML Transitions
+    EML_ACTIVE -> EML_SLEEP [label="idle_timeout reached\ntile_sleep[1]=1\ntile_iso_en[1]=1\ntile_ret_en[1]=1"];
+    EML_SLEEP -> EML_ACTIVE [label="wake_req or IRQ\ntile_sleep[1]=0\ntile_iso_en[1]=0\ntile_ret_en[1]=0"];
+
+    // SNN Transitions
+    SNN_ACTIVE -> SNN_SLEEP [label="idle_timeout reached\ntile_sleep[2]=1\ntile_iso_en[2]=1\ntile_ret_en[2]=1"];
+    SNN_SLEEP -> SNN_ACTIVE [label="wake_req or IRQ\ntile_sleep[2]=0\ntile_iso_en[2]=0\ntile_ret_en[2]=0"];
+
+    // NVM Transitions (3-state)
+    NVM_ACTIVE -> NVM_RETENTION [label="write_buffer empty\nretention mode\nVPWR=0.8V"];
+    NVM_RETENTION -> NVM_ACTIVE [label="access request\nrestore VPWR=1.8V"];
+    NVM_RETENTION -> NVM_OFF [label="deep sleep\ntile_sleep[3]=1"];
+    NVM_OFF -> NVM_ACTIVE [label="wake request\nfull power-up sequence"];
+
+    // Cross-domain dependencies
+    {rank=same; EML_ACTIVE; SNN_ACTIVE; NVM_ACTIVE;}
+    {rank=same; EML_SLEEP; SNN_SLEEP; NVM_RETENTION;}
+}

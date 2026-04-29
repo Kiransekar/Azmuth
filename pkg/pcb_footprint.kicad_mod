@@ -1,0 +1,66 @@
+(kicad_symbol_lib_v2
+  (version 20211123)
+  (generator "libedit")
+  (symbol "XCEW_AI_PRO_144"
+    (in_bom yes)
+    (on_board yes)
+    (property "Reference" "U" (id 0) (at -15.24 17.78 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "XCEW_AI_PRO_144" (id 1) (at -15.24 -17.78 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "Package_QFP:QFP-144_20x20mm_P0.4mm" (id 2) (at 0 0 0) hide)
+    (property "Datasheet" "~" (id 3) (at 0 0 0) hide)
+    (property "MAX_POWER" "2.0W" (id 4) (at 0 0 0) hide)
+    (property "PACKAGE" "QFP-144" (id 5) (at 0 0 0) hide)
+    (symbol "XCEW_AI_PRO_144_1"
+      (polyline
+        (pts (xy -10 10) (xy 10 10) (xy 10 -10) (xy -10 -10) (xy -10 10))
+        (stroke (width 0.254) (type solid))
+      )
+      (text "XCEW" (at 0 0 0) (effects (font (size 1.27 1.27)) (justify left)))
+
+      ; Power pins
+      (pin "VDD_1V2" (part 1) (type power_in) (at -12.7 8 0) (length 2.54) (name_effects (justify right)))
+      (pin "VDD_1V8" (part 1) (type power_in) (at -12.7 6 0) (length 2.54) (name_effects (justify right)))
+      (pin "VDD_SNN" (part 1) (type power_in) (at -12.7 4 0) (length 2.54) (name_effects (justify right)))
+      (pin "GND" (part 1) (type power_in) (at -12.7 2 0) (length 2.54) (name_effects (justify right)))
+
+      ; Clock and reset
+      (pin "i_clk" (part 1) (type input) (at -12.7 0 0) (length 2.54) (name_effects (justify right)))
+      (pin "i_clk_snn" (part 1) (type input) (at -12.7 -2 0) (length 2.54) (name_effects (justify right)))
+      (pin "i_rst" (part 1) (type input) (at -12.7 -4 0) (length 2.54) (name_effects (justify right)))
+
+      ; JTAG interface
+      (pin "jtag_tck" (part 1) (type input) (at -12.7 -6 0) (length 2.54) (name_effects (justify right)))
+      (pin "jtag_tms" (part 1) (type input) (at -12.7 -8 0) (length 2.54) (name_effects (justify right)))
+      (pin "jtag_tdi" (part 1) (type input) (at 12.7 -8 180) (length 2.54) (name_effects (justify left)))
+      (pin "jtag_tdo" (part 1) (type output) (at 12.7 -6 180) (length 2.54) (name_effects (justify left)))
+      (pin "jtag_trst" (part 1) (type input) (at 12.7 -4 180) (length 2.54) (name_effects (justify left)))
+
+      ; SPI interface
+      (pin "spi_clk" (part 1) (type input) (at 12.7 -2 180) (length 2.54) (name_effects (justify left)))
+      (pin "spi_mosi" (part 1) (type input) (at 12.7 0 180) (length 2.54) (name_effects (justify left)))
+      (pin "spi_miso" (part 1) (type output) (at 12.7 2 180) (length 2.54) (name_effects (justify left)))
+      (pin "spi_cs" (part 1) (type input) (at 12.7 4 180) (length 2.54) (name_effects (justify left)))
+
+      ; UART interface
+      (pin "uart_tx" (part 1) (type output) (at 12.7 6 180) (length 2.54) (name_effects (justify left)))
+      (pin "uart_rx" (part 1) (type input) (at 12.7 8 180) (length 2.54) (name_effects (justify left)))
+
+      ; Interrupt and debug
+      (pin "o_irq" (part 1) (type output) (at -12.7 -10 0) (length 2.54) (name_effects (justify right)))
+      (pin "debug_uart[0]" (part 1) (type output) (at -10 -12.7 90) (length 2.54) (name_effects (justify bottom)))
+      (pin "debug_uart[7]" (part 1) (type output) (at 10 -12.7 90) (length 2.54) (name_effects (justify bottom)))
+
+      ; AXI interface (partial)
+      (pin "axi_awaddr[4]" (part 1) (type output) (at 10 12.7 270) (length 2.54) (name_effects (justify top)))
+      (pin "axi_araddr[4]" (part 1) (type output) (at -10 12.7 270) (length 2.54) (name_effects (justify top)))
+
+      ; Test and control
+      (pin "scan_in_1" (part 1) (type input) (at -8 -12.7 90) (length 2.54) (name_effects (justify bottom)))
+      (pin "scan_out_1" (part 1) (type output) (at -6 -12.7 90) (length 2.54) (name_effects (justify bottom)))
+      (pin "bist_start" (part 1) (type input) (at -4 -12.7 90) (length 2.54) (name_effects (justify bottom)))
+      (pin "bist_done" (part 1) (type output) (at -2 -12.7 90) (length 2.54) (name_effects (justify bottom)))
+      (pin "thermal_alert" (part 1) (type output) (at 0 -12.7 90) (length 2.54) (name_effects (justify bottom)))
+      (pin "temp_sense" (part 1) (type bidirectional) (at 2 -12.7 90) (length 2.54) (name_effects (justify bottom)))
+    )
+  )
+)

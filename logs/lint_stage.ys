@@ -1,0 +1,22 @@
+# Yosys lint script for v1.1 RTL
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/core/riscv_core.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/core/xcie_decoder.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/core/xcie_csr.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/core/xcie_ctrl.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/core/policy_determinism.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/eml/eml_unit.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/eml/eml_dag_cache.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/eml/eml_constant_time.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/snn/snn_tile.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/snn/stdp_engine.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/snn/lif_ttfs_neuron_v1_1.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/snn/stdp_engine_v1_1.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/nvm/nvm_ctrl.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/power/orchestrator.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/power/body_bias_ctrl.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/security/fault_monitor.v
+read_verilog -sv -Irtl/core -Irtl/eml -Irtl/snn -Irtl/nvm -Irtl/power -Irtl/security -Irtl/soc ./rtl/soc/axi_lite_interconnect_v1_1.v
+hierarchy -top xcew_top_v1_1
+proc; opt; memory; fsm
+synth -top xcew_top_v1_1 -flatten
+opt_clean

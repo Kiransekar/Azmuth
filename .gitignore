@@ -1,0 +1,74 @@
+# Build artifacts
+build/
+sim_build/
+*.vcd
+*.fst
+*.vpd
+*.wlf
+
+# Synthesis outputs
+*.netlist.v
+*.synth.v
+*.mapped.v
+*.placed.v
+*.routed.v
+*.gds
+*.gds2
+*.oas
+*.mag
+*.lef
+*.def
+
+# Reports
+*.rpt
+*.report
+timing_reports/
+power_reports/
+area_reports/
+coverage_reports/
+
+# Work directories
+work/
+INCA_libs/
+nlint/
+verdiLog/
+vcover/
+
+# Binary/firmware outputs
+*.elf
+*.hex
+*.bin
+*.map
+*.lst
+
+# IDE/editor
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+*.bak
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Documentation build
+docs/_build/
+*.pdf
+*.html.zip
+
+# Yosys
+*.json
+*.blif
+*.edif
+
+# OpenROAD
+*.odb
+*.rcx

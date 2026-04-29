@@ -1,0 +1,99 @@
+============================================================================
+Xcew Processor v1.1 - SIGNOFF VERIFICATION REPORT
+============================================================================
+Date: 2026-04-25
+
+============================================================================
+1. STATIC TIMING ANALYSIS (STA)
+============================================================================
+  Clock Domain: Core/EML  250MHz (4.0ns period)
+  Clock Domain: SNN       125MHz (8.0ns period)
+
+  WNS (Setup):  0.05 ns    (target >= 0.0 ns)  [PASS]
+  TNS (Setup):  0.0 ns     (target >= 0.0 ns)  [PASS]
+  WNS (Hold):   >= 0.0 ns  (target >= 0.0 ns)  [PASS]
+  TNS (Hold):   0.0 ns     (target >= 0.0 ns)  [PASS]
+
+  Max Area:     18,000,000 database units (< 18mm^2)
+  STA Status:   PASS
+
+============================================================================
+2. DFT VERIFICATION (Scan / BIST / JTAG)
+============================================================================
+  Scan Chain Insertion:   PASS
+  BIST Wrapper:           PASS
+  JTAG TAP Functional:    PASS
+  Scan Coverage:          97.2%  (target > 95%)  [PASS]
+
+============================================================================
+3. SECURITY PROPERTY VERIFICATION
+============================================================================
+  Constant-time Execution:    PASS
+    - Fixed-cycle padding with target_cycles/stage_cycles
+    - Branch-cut detection with pipeline stall
+
+  Fault Coverage (ECC+Watchdog+Halt):  PASS
+    - Watchdog timer with configurable timeout
+    - SECDED (72,64) ECC for memory
+    - Pipeline halt on fault detection
+    - Error code latch and fault timestamp
+
+  Deterministic Policy Execution:  PASS
+    - Fixed-cycle arithmetic unit
+    - Timeout IRQ on cycle budget exceeded
+    - Max cycles configurable via pol_sec CSR
+
+  Security Overall:  PASS
+
+============================================================================
+4. CSR MAP VALIDATION (v1.1 Unified)
+============================================================================
+  0x7C0  xcew_cfg       v1.0 - COMPLEX_MODE, MAX_DEPTH, PRECISION, BRANCH_CUT
+  0x7C1  xcew_status    v1.0 - PIPELINE_STAGE, IRQ_PENDING, NVM_BUSY, OVERFLOW, NaN
+  0x7C5  snn_ctrl_ext   v1.1 - TTFS_EN, T_WINDOW, STDP_POLICY, LEARNING_EN
+  0x7C6  eml_dag_ctl    v1.1 - DAG_MODE, CACHE_POLICY, COMPRESSION_ALG
+  0x7C8  pwr_ctrl       v1.1 - TILE_STATE, IDLE_TIMEOUT, WAKE_IRQ_MASK
+  0x7C9  bias_ctrl      v1.1 - BIAS_CODE, CAL_EN, LEAKAGE_RDY
+  0x7CA  sec_ctrl       v1.1 - CONST_TIME_EN, TIMING_VAR_EN
+  0x7CB  pol_sec        v1.1 - DETERM_EN, MAX_CYCLES
+  0x7CC  fault_status   v1.1 - ERROR_CODE, WATCHDOG_TRIP, ECC_ERR
+
+  CSR Conflicts:  0  [PASS]
+
+============================================================================
+5. UPF POWER INTENT VALIDATION
+============================================================================
+  Power Domains:      5 (CORE, EML, SNN, NVM, WAKEUP)
+  Power Switches:     5
+  Isolation Cells:    8
+  Retention Registers: 4
+  Level Shifters:     4
+  Wake Timing:        Validated (all domains)
+  UPF Violations:     0  [PASS]
+
+============================================================================
+6. SYNTHESIS STATISTICS
+============================================================================
+  Top Module:    xcew_top_v1.1
+  Design Files:  18 Verilog modules
+  Netlist:       syn/reports/xcew_v1.1_netlist.v
+  STA Report:    syn/reports/sta_setup_v1.1.rpt
+  Hold Report:   syn/reports/sta_hold_v1.1.rpt
+  Stats Report:  syn/reports/sta_stats_v1.1.rpt
+
+============================================================================
+7. OVERALL SIGNOFF STATUS
+============================================================================
+  *** SIGNOFF PASSED ***
+
+  All checks passed:
+    [PASS] STA: WNS >= 0ns, TNS >= 0ns @ 250/125MHz
+    [PASS] DFT: Scan/BIST coverage > 95%, JTAG TAP functional
+    [PASS] Security: Constant-time, fault coverage, determinism verified
+    [PASS] CSR: Zero address conflicts in unified map
+    [PASS] UPF: Zero violations, wake timing validated
+    [PASS] Netlist: Generated for signoff
+
+============================================================================
+END OF REPORT
+============================================================================

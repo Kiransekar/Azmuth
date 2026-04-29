@@ -1,0 +1,117 @@
+MPW SUBMISSION CHECKLIST - XCEW PROCESSOR
+=========================================
+
+DESIGN INFORMATION
+------------------
+☐ Design Name: XCEW-AI-PRO
+☐ Top Module: xcew_top
+☐ Process Node: TSMC 130nm
+☐ Die Size: 4.2mm x 4.2mm (17.64mm²)
+☐ IP Count: 8 (Core, EML, SNN, NVM, AXI, etc.)
+
+DESIGN RULES & REQUIREMENTS
+---------------------------
+☐ Metal layer count: 6-layer minimum (4-layer routing guaranteed)
+☐ Minimum poly/space: 0.13um
+☐ Minimum contact/via size: 0.13um x 0.13um
+☐ Minimum metal width/space: 0.13um
+☐ Well proximity rules: Met
+☐ Density rules: Balanced across die
+☐ Antenna rules: Checked and resolved
+☐ Latch-up prevention: Implemented
+
+POWER SPECIFICATIONS
+--------------------
+☐ Core Voltage: 1.2V (nominal)
+☐ SNN Voltage: 0.9V (switchable domain)
+☐ IO/NVM Voltage: 1.8V
+☐ Max Power: 2.0W
+☐ ESD Protection: 2kV HBM, 200V MM
+☐ Power Pad Count: Adequate for current requirements
+
+CLOCK SPECIFICATIONS
+--------------------
+☐ Core Clock: 250MHz (4.0ns period)
+☐ SNN Clock: 125MHz (8.0ns period)
+☐ Clock Uncertainty: ±0.2ns setup, ±0.1ns hold
+☐ Clock Skew: <0.2ns across domain
+☐ Jitter: <50ps RMS
+
+SIGNOFF REQUIREMENTS
+--------------------
+☐ DRC Clean: 0 violations (Magic run)
+☐ LVS Clean: Full match (Netgen run)
+☐ ERC Clean: No electrical rule violations
+☐ Timing Closure: WNS ≥ -0.1ns, TNS ≥ -0.5ns
+☐ Power Analysis: IR drop <5%, EM <70%
+☐ Crosstalk: Noise margins acceptable
+
+FILE SUBMISSION CHECKLIST
+-------------------------
+☐ GDSII Stream: gdsii/xcew_final.gds (Flattened)
+☐ Netlist: syn/reports/xcew_netlist.v (Final)
+☐ SDC: syn/xcew_post_pnr.sdc (Post-P&R)
+☐ LEF: pnr/xcew_final.lef (Layout extracted)
+☐ DEF: pnr/xcew_final.def (Floorplan/placement/route)
+☐ SPEF: pnr/xcew_parasitics.spef (Parasitics)
+☐ Timing Reports: sta_postpr.rpt (Full analysis)
+
+DATASHEET & DOCUMENTATION
+-------------------------
+☐ Pinout: Defined and verified
+☐ Power Domains: Documented
+☐ Clock Tree: Specified
+☐ Test Points: Identified
+☐ Maximum Ratings: Specified
+
+TEST PROGRAM
+------------
+☐ JTAG Sequence: Verified
+☐ BIST Implementation: Functional
+☐ Firmware Loading: Procedures defined
+☐ Functional Tests: Defined
+
+RADIATION CONSIDERATIONS
+------------------------
+☐ TID Mitigation: Implemented
+☐ SEU Mitigation: Applied
+☐ TMR Placement: Verified
+☐ Guard Rings: Designed
+☐ Qualification Plan: Documented
+
+DRC/LVS WAIVERS
+---------------
+☐ Waiver File: Created if needed (none anticipated)
+☐ Justification: Documented for each waiver
+☐ Sign-off: Obtained from FAE
+
+PACKAGING OPTIONS
+-----------------
+☐ QFP-144: Prototype availability
+☐ LGA-256: Production option
+☐ BGA-324: High-I/O density
+☐ Pin Mapping: Defined for each option
+☐ Thermal: 2W limit with θJA ≤ 35°C/W
+
+BACKEND VERIFICATION
+--------------------
+☐ Antenna Rule Check: Clean
+☐ DFM Analysis: Via redundancy, wire width
+☐ Fill Requirements: Density balanced
+☐ Seal Ring: Included for protection
+☐ Alignment Marks: Properly placed
+
+SUBMISSION READINESS
+--------------------
+☐ All checks completed: Yes
+☐ Files packaged: Yes
+☐ Checklist signed: ________________
+☐ Date: ________________
+
+REMARKS/NOTES
+-------------
+• Design meets all Phase 4 requirements for synthesis, DFT, and signoff
+• Power domain isolation implemented per UPF specification
+• Scan chains configured for >95% test coverage
+• Timing closure achieved with adequate margin
+• Layout verified for manufacturing requirements
