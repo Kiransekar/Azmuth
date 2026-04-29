@@ -445,11 +445,13 @@ The following bugs were identified and fixed during code review:
 | 22 | `rtl/core/riscv_core.v` | `regfile[0]` not initialized; 31 individual init lines | Compact for-loop initializing all 32 registers (x0–x31) |
 | 23 | `rtl/eml/eml_unit.v` | `compute_exp` clamped negative inputs to a small value | Proper signed arithmetic: negative `k_int` → right-shift `pow2f`; overflow/underflow thresholds |
 | 24 | `rtl/eml/eml_unit.v` | `compute_ln` had fragile sign compensation hack for sub-unity values | Signed `log2_int` + `log2_combined` arithmetic; explicit `ln(1.0) = 0` case |
+| 25 | `rtl/eml/eml_unit.v` | `compute_exp` Horner polynomial used `f²` instead of `f`; x/ln2 multiply overflowed 32-bit | Fixed Horner evaluation; replaced multiply with shift-add (x+x>>2+x>>3+x>>4+x>>8+x>>9 ≈ x×1.4434) |
+| 26 | `rtl/eml/eml_unit.v` | `compute_ln` priority encoder found lowest set bit (overwrote highest); unsigned multiply with negative coeffs; Taylor series 12% error at f=0.1 | Break after first match; 48-bit signed intermediates with decimal constants; least-squares minimax coefficients (<0.2% max error) |
+| 27 | `tb/eml_math_tb.v` | No testbench for EML fixed-point math | 40-test suite covering edge cases, positive/negative inputs, sub-unity values, ±2% relative tolerance |
 
 ### Remaining TODOs
 
-- EML unit: exp/ln polynomial accuracy could be improved with higher-order terms or CORDIC iteration
-- EML unit: no formal testbench coverage for Q16.16 fixed-point math edge cases
+- EML unit: consider CORDIC iteration for further accuracy improvement beyond 4th-order minimax
 
 ---
 
