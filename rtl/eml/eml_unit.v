@@ -61,30 +61,36 @@ module eml_unit (
 
     // Compute exp approximation using Q16.16 fixed-point
     // Uses e^x = 2^(x/ln2) = 2^k * 2^f where k = floor(x/ln2), f = frac(x/ln2)
-    // 2^f approximated by polynomial: 1 + f*(0.6+0.4*f) for f in [0,1)
+    // 2^f approximated by polynomial: 1 + f*(0.6423 + 0.3577*f) for f in [0,1)
+    // Handles negative x via right-shift (2^k for k<0 = pow2f >> |k|)
     function [31:0] compute_exp;
-        input [31:0] input_val;  // Q16.16 format
-        reg [31:0] x_scaled;     // x / ln(2) in Q16.16
-        reg [15:0] k_int;        // integer part of x/ln2
-        reg [31:0] frac_q16;     // fractional part in Q16.16
-        reg [31:0] pow2f;        // 2^f in Q16.16
+        input [31:0] input_val;  // Q16.16 format (signed)
+        reg signed [31:0] x_signed;  // Signed interpretation
+        reg signed [31:0] x_scaled;  // x / ln(2) in Q16.16 signed
+        reg signed [15:0] k_int;     // signed integer part of x/ln2
+        reg [31:0] frac_q16;         // fractional part in Q16.16 (always >= 0)
+        reg [31:0] pow2f;            // 2^f in Q16.16
         reg [31:0] temp;
         begin
-            // Clamp negative inputs to avoid underflow
-            if (input_val[31]) begin
-                compute_exp = 32'h00010000;  // e^(negative) ≈ 0 in Q16.16 → return ~0.0039
-            end else if (input_val > 32'h000B0000) begin
-                // Large input: clamp to max representable
+            x_signed = $signed(input_val);
+
+            if (input_val == 32'h0) begin
+                compute_exp = 32'h00010000;  // e^0 = 1.0
+            end else if (x_signed < -32'sd726017) begin
+                // x < ~-11.09 → e^x < 1/65536 → underflow to 0 in Q16.16
+                compute_exp = 32'h00000001;  // Smallest positive Q16.16
+            end else if (x_signed > 32'sd726017) begin
+                // x > ~11.09 → e^x > 65535 → overflow in Q16.16
                 compute_exp = 32'h7FFFFFFF;
             end else begin
-                // x / ln(2) ≈ x * (1/0.6931) ≈ x * 1.4427 ≈ x + x*0.4427
-                // In Q16.16: 1.4427 ≈ 0x170B3
-                x_scaled = (input_val >> 1) + (input_val >> 2) + (input_val >> 4) +
-                           (input_val >> 8) + (input_val >> 12);  // ≈ x * 1.4424
+                // x / ln(2) ≈ x * 1.4427
+                // Use signed arithmetic for negative x
+                x_scaled = (x_signed >>> 1) + (x_signed >>> 2) + (x_signed >>> 4) +
+                           (x_signed >>> 8) + (x_signed >>> 12);  // ≈ x * 1.4424
 
-                // Extract integer and fractional parts
+                // Extract integer and fractional parts (signed)
                 k_int = x_scaled[31:16];
-                frac_q16 = {16'h0, x_scaled[15:0]};
+                frac_q16 = {16'h0, x_scaled[15:0]};  // Fractional part is always positive
 
                 // Approximate 2^f using polynomial: 1 + f*(0.6423 + 0.3577*f)
                 // In Q16.16: 0.6423 ≈ 0xA4B8, 0.3577 ≈ 0x5B94
@@ -93,11 +99,17 @@ module eml_unit (
                 pow2f = (frac_q16 * temp) >> 16;          // f * (0.6423 + 0.3577*f)
                 pow2f = pow2f + 32'h00010000;             // + 1.0
 
-                // Apply 2^k by shifting (k_int is the integer exponent)
-                if (k_int < 16) begin
-                    compute_exp = pow2f << k_int;
+                // Apply 2^k: left-shift for k>0, right-shift for k<0
+                if (k_int > 0 && k_int < 16) begin
+                    compute_exp = pow2f << k_int;           // 2^k * 2^f, k positive
+                end else if (k_int == 0) begin
+                    compute_exp = pow2f;                     // 2^f only
+                end else if (k_int < 0 && k_int > -16) begin
+                    compute_exp = pow2f >> (-k_int);        // 2^k * 2^f, k negative
+                end else if (k_int >= 16) begin
+                    compute_exp = 32'h7FFFFFFF;              // Overflow
                 end else begin
-                    compute_exp = 32'h7FFFFFFF;  // Overflow
+                    compute_exp = 32'h00000001;              // Underflow
                 end
             end
         end
@@ -106,20 +118,24 @@ module eml_unit (
     // Compute ln approximation using Q16.16 fixed-point
     // Uses ln(x) = log2(x) * ln(2)
     // log2(x) found by leading-zero count for integer part + polynomial for mantissa
+    // Handles values < 1.0 (sub-unity) via signed log2_int
     function [31:0] compute_ln;
-        input [31:0] input_val;  // Q16.16 format
+        input [31:0] input_val;  // Q16.16 format (unsigned interpretation)
         reg [31:0] x_norm;       // Normalized to [1.0, 2.0) in Q16.16
-        reg [15:0] log2_int;     // Integer part of log2
+        reg signed [15:0] log2_int;  // Signed integer part of log2
         reg [31:0] log2_frac;   // Fractional part of log2 in Q16.16
         reg [31:0] m;           // Mantissa in Q16.16
         reg [31:0] m_minus1;    // (m - 1) in Q16.16
         reg [4:0]  leading_one; // Position of highest set bit
+        reg signed [31:0] log2_combined;  // log2_int + log2_frac in Q16.16 signed
         integer i;
         begin
-            if (input_val == 0) begin
+            if (input_val == 32'h0) begin
                 compute_ln = 32'h80000000;  // -infinity (error)
             end else if (input_val[31]) begin
                 compute_ln = 32'h80000000;  // Negative input → error
+            end else if (input_val == 32'h00010000) begin
+                compute_ln = 32'h0;  // ln(1.0) = 0
             end else begin
                 // Find position of highest set bit using priority encoder
                 // This is synthesizable as a fixed-bound for-loop
@@ -131,13 +147,13 @@ module eml_unit (
                 end
 
                 // Normalize: shift so bit 16 is the highest set bit
-                // log2_int = leading_one - 16 (the exponent in Q16.16 representation)
+                // log2_int = leading_one - 16 (signed: negative for values < 1.0)
                 if (leading_one >= 16) begin
                     x_norm = input_val >> (leading_one - 16);
-                    log2_int = leading_one - 16;
+                    log2_int = leading_one - 16;  // Positive
                 end else begin
                     x_norm = input_val << (16 - leading_one);
-                    log2_int = leading_one - 16;  // Will be negative for values < 1.0
+                    log2_int = leading_one - 16;  // Negative for values < 1.0
                 end
 
                 // m = normalized value in [1.0, 2.0), m_minus1 = m - 1.0
@@ -154,14 +170,13 @@ module eml_unit (
                 log2_frac = log2_frac + 32'h000170B3;          // + a0
                 log2_frac = (m_minus1 * log2_frac) >> 16;     // f * (a0 + a1*f + a2*f^2)
 
-                // Combine: log2(x) = log2_int + log2_frac
+                // Combine using signed arithmetic: log2(x) = log2_int + log2_frac
+                // log2_int is signed Q16.0, log2_frac is unsigned Q0.16
+                log2_combined = {log2_int, 16'b0} + {{16{log2_frac[31]}}, log2_frac};
+
                 // ln(x) = log2(x) * ln(2) ≈ log2(x) * 0.6931
                 // In Q16.16: 0.6931 ≈ 0xB1AA
-                compute_ln = (({16'h0, log2_int} + log2_frac) * 32'h0000B1AA) >> 16;
-                // Adjust for log2_int sign (subtract 16 since Q16.16 has implicit 16-bit shift)
-                if (log2_int[15]) begin
-                    compute_ln = compute_ln - (32'h0000B1AA << 1);  // Compensation for negative log2_int
-                end
+                compute_ln = (log2_combined * 32'sd45738) >>> 16;
             end
         end
     endfunction

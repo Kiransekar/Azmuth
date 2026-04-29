@@ -112,6 +112,7 @@ module riscv_core (
     // ALU signals
     reg [31:0] alu_op1, alu_op2;
     reg [3:0]  alu_control;
+    integer rf_init_idx;  // For register file initialization loop
 
     // Register file
     reg [31:0] regfile [0:REG_COUNT-1];
@@ -277,38 +278,10 @@ module riscv_core (
             id_ex_pc <= 32'h00000000;
             id_ex_valid <= 1'b0;
 
-            // Initialize register file
-            regfile[1] <= 32'h0;
-            regfile[2] <= 32'h0;
-            regfile[3] <= 32'h0;
-            regfile[4] <= 32'h0;
-            regfile[5] <= 32'h0;
-            regfile[6] <= 32'h0;
-            regfile[7] <= 32'h0;
-            regfile[8] <= 32'h0;
-            regfile[9] <= 32'h0;
-            regfile[10] <= 32'h0;
-            regfile[11] <= 32'h0;
-            regfile[12] <= 32'h0;
-            regfile[13] <= 32'h0;
-            regfile[14] <= 32'h0;
-            regfile[15] <= 32'h0;
-            regfile[16] <= 32'h0;
-            regfile[17] <= 32'h0;
-            regfile[18] <= 32'h0;
-            regfile[19] <= 32'h0;
-            regfile[20] <= 32'h0;
-            regfile[21] <= 32'h0;
-            regfile[22] <= 32'h0;
-            regfile[23] <= 32'h0;
-            regfile[24] <= 32'h0;
-            regfile[25] <= 32'h0;
-            regfile[26] <= 32'h0;
-            regfile[27] <= 32'h0;
-            regfile[28] <= 32'h0;
-            regfile[29] <= 32'h0;
-            regfile[30] <= 32'h0;
-            regfile[31] <= 32'h0;
+            // Initialize register file (x0–x31)
+            for (rf_init_idx = 0; rf_init_idx < REG_COUNT; rf_init_idx = rf_init_idx + 1) begin
+                regfile[rf_init_idx] <= 32'h0;
+            end
 
         end else if (!stall_id_ex && !bubble_id_ex) begin
             // Capture instruction from IF stage

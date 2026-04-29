@@ -442,12 +442,14 @@ The following bugs were identified and fixed during code review:
 | 19 | `rtl/core/riscv_core.v` | Load instructions wrote ALU result (address) instead of memory data | Added `is_load ? mem_rdata` to wb_data mux so loads correctly write loaded data |
 | 20 | `rtl/eml/eml_unit.v` | `compute_ln` used `while` loops that may not synthesize | Replaced with fixed for-loop priority encoder to find MSB, then conditional normalization |
 | 21 | `rtl/nvm/nvm_ctrl.v` | `init_idx` declared inside procedural block (invalid Verilog) | Moved `integer init_idx` declaration to module-level internal signals |
+| 22 | `rtl/core/riscv_core.v` | `regfile[0]` not initialized; 31 individual init lines | Compact for-loop initializing all 32 registers (x0–x31) |
+| 23 | `rtl/eml/eml_unit.v` | `compute_exp` clamped negative inputs to a small value | Proper signed arithmetic: negative `k_int` → right-shift `pow2f`; overflow/underflow thresholds |
+| 24 | `rtl/eml/eml_unit.v` | `compute_ln` had fragile sign compensation hack for sub-unity values | Signed `log2_int` + `log2_combined` arithmetic; explicit `ln(1.0) = 0` case |
 
 ### Remaining TODOs
 
-- `riscv_core` `regfile[0]` not explicitly initialized (relies on RISC-V x0=0 convention)
-- `compute_exp` negative input handling is approximate (clamps to small value); proper sub-unity range needed
-- EML unit: exp/ln only tested with Q16.16 positive inputs; negative/zero edge cases may have accuracy issues
+- EML unit: exp/ln polynomial accuracy could be improved with higher-order terms or CORDIC iteration
+- EML unit: no formal testbench coverage for Q16.16 fixed-point math edge cases
 
 ---
 
