@@ -113,6 +113,7 @@ module eml_unit (
         reg [31:0] log2_frac;   // Fractional part of log2 in Q16.16
         reg [31:0] m;           // Mantissa in Q16.16
         reg [31:0] m_minus1;    // (m - 1) in Q16.16
+        reg [4:0]  leading_one; // Position of highest set bit
         integer i;
         begin
             if (input_val == 0) begin
@@ -120,29 +121,26 @@ module eml_unit (
             end else if (input_val[31]) begin
                 compute_ln = 32'h80000000;  // Negative input → error
             end else begin
-                // Find position of MSB to get integer part of log2
-                // and normalize x to [1.0, 2.0) in Q16.16
-                log2_int = 0;
-                x_norm = input_val;
-                // Shift right until value is in [0x00010000, 0x00020000)
-                for (i = 31; i >= 16; i = i - 1) begin
-                    if (x_norm[i] && i > 16) begin
-                        x_norm = x_norm >> (i - 16);
-                        log2_int = i - 16;
-                        i = 15;  // Break out of loop
+                // Find position of highest set bit using priority encoder
+                // This is synthesizable as a fixed-bound for-loop
+                leading_one = 0;
+                for (i = 30; i >= 0; i = i - 1) begin
+                    if (input_val[i]) begin
+                        leading_one = i[4:0];
                     end
                 end
-                // Ensure x_norm is in [1.0, 2.0)
-                while (x_norm >= 32'h00020000) begin
-                    x_norm = x_norm >> 1;
-                    log2_int = log2_int + 1;
-                end
-                while (x_norm < 32'h00010000 && x_norm != 0) begin
-                    x_norm = x_norm << 1;
-                    log2_int = log2_int - 1;
+
+                // Normalize: shift so bit 16 is the highest set bit
+                // log2_int = leading_one - 16 (the exponent in Q16.16 representation)
+                if (leading_one >= 16) begin
+                    x_norm = input_val >> (leading_one - 16);
+                    log2_int = leading_one - 16;
+                end else begin
+                    x_norm = input_val << (16 - leading_one);
+                    log2_int = leading_one - 16;  // Will be negative for values < 1.0
                 end
 
-                // m = normalized value, m_minus1 = m - 1.0
+                // m = normalized value in [1.0, 2.0), m_minus1 = m - 1.0
                 m = x_norm;
                 m_minus1 = m - 32'h00010000;
 

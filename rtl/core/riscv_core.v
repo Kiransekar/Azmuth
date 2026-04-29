@@ -408,12 +408,14 @@ module riscv_core (
     // Compute ALU result
     assign alu_result = alu_compute(alu_op1, alu_op2, alu_control);
 
-    // Determine writeback data (ALU result, Xcew result, PC+4 for jumps, or CSR read)
+    // Determine writeback data (ALU result, Xcew result, PC+4 for jumps, CSR read, or load data)
     wire is_csr_read = id_ex_valid && (id_ex_instr[6:0] == OPCODE_SYSTEM) &&
                        (id_ex_instr[14:12] != 3'b000);  // Any CSR instruction (not ECALL/EBREAK)
+    wire is_load = id_ex_valid && (id_ex_instr[6:0] == OPCODE_LTYPE);
     wire [31:0] wb_data;
     assign wb_data = xcew_valid ? xcew_result :
                      is_csr_read ? csr_rd_data :
+                     is_load ? mem_rdata :
                      ((id_ex_instr[6:0] == OPCODE_JAL) || (id_ex_instr[6:0] == OPCODE_JALR)) ? id_ex_pc + 32'h4 :
                      (id_ex_instr[6:0] == OPCODE_LUI) ? id_imm :
                      alu_result;
@@ -477,7 +479,6 @@ module riscv_core (
 
     // Memory signals - driven by load/store instructions
     wire is_store = id_ex_valid && (id_ex_instr[6:0] == OPCODE_STYPE);
-    wire is_load  = id_ex_valid && (id_ex_instr[6:0] == OPCODE_LTYPE);
     assign mem_addr  = (is_store || is_load) ? alu_result : 32'h0;
     assign mem_wdata = is_store ? rf_rs2_data : 32'h0;
     assign mem_we    = is_store;
