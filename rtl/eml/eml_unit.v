@@ -61,7 +61,7 @@ module eml_unit (
 
     // Compute exp approximation using Q16.16 fixed-point
     // Uses e^x = 2^(x/ln2) = 2^k * 2^f where k = floor(x/ln2), f = frac(x/ln2)
-    // 2^f approximated by polynomial: 1 + f*(0.6423 + 0.3577*f) for f in [0,1)
+    // 2^f approximated by 4th-order minimax polynomial for f in [0,1)
     // Handles negative x via right-shift (2^k for k<0 = pow2f >> |k|)
     function [31:0] compute_exp;
         input [31:0] input_val;  // Q16.16 format (signed)
@@ -70,7 +70,6 @@ module eml_unit (
         reg signed [15:0] k_int;     // signed integer part of x/ln2
         reg [31:0] frac_q16;         // fractional part in Q16.16 (always >= 0)
         reg [31:0] pow2f;            // 2^f in Q16.16
-        reg [31:0] temp;
         begin
             x_signed = $signed(input_val);
 
@@ -83,21 +82,30 @@ module eml_unit (
                 // x > ~11.09 → e^x > 65535 → overflow in Q16.16
                 compute_exp = 32'h7FFFFFFF;
             end else begin
-                // x / ln(2) ≈ x * 1.4427
-                // Use signed arithmetic for negative x
-                x_scaled = (x_signed >>> 1) + (x_signed >>> 2) + (x_signed >>> 4) +
-                           (x_signed >>> 8) + (x_signed >>> 12);  // ≈ x * 1.4424
+                // x / ln(2) ≈ x * 1.4427 via shift-add (avoids multiply overflow)
+                // 1.4427 ≈ 1 + 1/4 + 1/8 + 1/16 + 1/256 + 1/512 = 1.4434 (error < 0.05%)
+                x_scaled = x_signed + (x_signed >>> 2) + (x_signed >>> 3) +
+                           (x_signed >>> 4) + (x_signed >>> 8) + (x_signed >>> 9);
 
                 // Extract integer and fractional parts (signed)
                 k_int = x_scaled[31:16];
                 frac_q16 = {16'h0, x_scaled[15:0]};  // Fractional part is always positive
 
-                // Approximate 2^f using polynomial: 1 + f*(0.6423 + 0.3577*f)
-                // In Q16.16: 0.6423 ≈ 0xA4B8, 0.3577 ≈ 0x5B94
-                temp = (frac_q16 * 32'h00005B94) >> 16;  // 0.3577 * f
-                temp = temp + 32'h0000A4B8;               // + 0.6423
-                pow2f = (frac_q16 * temp) >> 16;          // f * (0.6423 + 0.3577*f)
-                pow2f = pow2f + 32'h00010000;             // + 1.0
+                // 4th-order Horner polynomial for 2^f, f in [0,1)
+                // 2^f ≈ 1 + f*(c1 + f*(c2 + f*(c3 + f*c4)))
+                //   c1 = 0.693147  Q16.16: 0xB1AA
+                //   c2 = 0.240226  Q16.16: 0x3D7A
+                //   c3 = 0.055504  Q16.16: 0x0E38
+                //   c4 = 0.009618  Q16.16: 0x0276
+                pow2f = 32'h00000276;                          // c4
+                pow2f = (frac_q16 * pow2f) >> 16;             // f*c4
+                pow2f = pow2f + 32'h00000E38;                  // c3 + f*c4
+                pow2f = (frac_q16 * pow2f) >> 16;             // f*(c3 + f*c4)
+                pow2f = pow2f + 32'h00003D7A;                  // c2 + f*(c3 + f*c4)
+                pow2f = (frac_q16 * pow2f) >> 16;             // f*(c2 + f*(c3 + f*c4))
+                pow2f = pow2f + 32'h0000B1AA;                  // c1 + f*(c2 + f*(c3 + f*c4))
+                pow2f = (frac_q16 * pow2f) >> 16;             // f*(c1 + f*(c2 + f*(c3 + f*c4)))
+                pow2f = pow2f + 32'h00010000;                  // 1 + f*(c1 + f*(c2 + f*(c3 + f*c4)))
 
                 // Apply 2^k: left-shift for k>0, right-shift for k<0
                 if (k_int > 0 && k_int < 16) begin
@@ -117,17 +125,21 @@ module eml_unit (
 
     // Compute ln approximation using Q16.16 fixed-point
     // Uses ln(x) = log2(x) * ln(2)
-    // log2(x) found by leading-zero count for integer part + polynomial for mantissa
+    // log2(x) found by leading-zero count for integer part + 4th-order polynomial for mantissa
     // Handles values < 1.0 (sub-unity) via signed log2_int
     function [31:0] compute_ln;
         input [31:0] input_val;  // Q16.16 format (unsigned interpretation)
         reg [31:0] x_norm;       // Normalized to [1.0, 2.0) in Q16.16
         reg signed [15:0] log2_int;  // Signed integer part of log2
-        reg [31:0] log2_frac;   // Fractional part of log2 in Q16.16
         reg [31:0] m;           // Mantissa in Q16.16
         reg [31:0] m_minus1;    // (m - 1) in Q16.16
+        reg signed [47:0] m_minus1_w;  // Widened m_minus1 for safe multiply
+        reg signed [47:0] s_frac_w;    // Widened signed intermediate for polynomial
+        reg signed [31:0] s_frac;  // Signed intermediate for polynomial (32-bit result)
+        reg signed [47:0] poly_w;  // Wide intermediate for signed polynomial multiplies
         reg [4:0]  leading_one; // Position of highest set bit
         reg signed [31:0] log2_combined;  // log2_int + log2_frac in Q16.16 signed
+        reg signed [47:0] ln_product;     // Wide intermediate for log2*ln2 multiply
         integer i;
         begin
             if (input_val == 32'h0) begin
@@ -138,11 +150,11 @@ module eml_unit (
                 compute_ln = 32'h0;  // ln(1.0) = 0
             end else begin
                 // Find position of highest set bit using priority encoder
-                // This is synthesizable as a fixed-bound for-loop
                 leading_one = 0;
                 for (i = 30; i >= 0; i = i - 1) begin
                     if (input_val[i]) begin
                         leading_one = i[4:0];
+                        i = 0;  // Break: stop at highest set bit
                     end
                 end
 
@@ -160,23 +172,38 @@ module eml_unit (
                 m = x_norm;
                 m_minus1 = m - 32'h00010000;
 
-                // Approximate log2(1+f) for f in [0,1) using polynomial
-                // log2(1+f) ≈ f*(a0 + f*(a1 + f*a2))
-                // a0 = 1.4427, a1 = -0.7213, a2 = 0.4150 (fitted for [0,1))
-                // In Q16.16: a0=0x170B3, a1=-0xB8A4, a2=0x6A3D
-                log2_frac = (m_minus1 * 32'h00006A3D) >> 16;  // a2 * f
-                log2_frac = log2_frac + 32'hFFFF475C;          // + a1 (negative)
-                log2_frac = (m_minus1 * log2_frac) >> 16;     // f * (a1 + a2*f)
-                log2_frac = log2_frac + 32'h000170B3;          // + a0
-                log2_frac = (m_minus1 * log2_frac) >> 16;     // f * (a0 + a1*f + a2*f^2)
+                // 4th-order Horner polynomial for log2(1+f), f in [0,1)
+                // log2(1+f) ≈ f*(a0 + f*(a1 + f*(a2 + f*a3)))
+                // Least-squares minimax coefficients (max error < 0.2%):
+                //   a0 =  1.4363  →  94130
+                //   a1 = -0.6701  → -43916
+                //   a2 =  0.3128  →  20499
+                //   a3 = -0.0793  →  -5198
+                // Use decimal signed constants (hex two's complement breaks 48-bit multiply)
+                m_minus1_w = $signed(m_minus1);
+                poly_w = m_minus1_w * (-5198);            // a3 * f
+                s_frac_w = poly_w >>> 16;
+                s_frac_w = s_frac_w + 20499;              // + a2
+                poly_w = m_minus1_w * s_frac_w;           // f * (a2 + a3*f)
+                s_frac_w = poly_w >>> 16;
+                s_frac_w = s_frac_w + (-43916);           // + a1
+                poly_w = m_minus1_w * s_frac_w;           // f * (a1 + a2*f + a3*f^2)
+                s_frac_w = poly_w >>> 16;
+                s_frac_w = s_frac_w + 94130;              // + a0
+                poly_w = m_minus1_w * s_frac_w;           // f * (a0 + a1*f + a2*f^2 + a3*f^3)
+                s_frac_w = poly_w >>> 16;
+                s_frac = s_frac_w[31:0];
 
-                // Combine using signed arithmetic: log2(x) = log2_int + log2_frac
-                // log2_int is signed Q16.0, log2_frac is unsigned Q0.16
-                log2_combined = {log2_int, 16'b0} + {{16{log2_frac[31]}}, log2_frac};
+                // Combine: log2(x) = log2_int + log2(1+f)
+                // log2_int is signed Q16.0 (in Q16.16: {log2_int, 16'b0})
+                // log2_frac is the full log2(1+f) in Q16.16 (range 0 to ~1.44)
+                log2_combined = {log2_int, 16'b0} + s_frac;
 
-                // ln(x) = log2(x) * ln(2) ≈ log2(x) * 0.6931
-                // In Q16.16: 0.6931 ≈ 0xB1AA
-                compute_ln = (log2_combined * 32'sd45738) >>> 16;
+                // ln(x) = log2(x) * ln(2) ≈ log2(x) * 0.693147
+                // Use 48-bit intermediate to avoid signed 32-bit overflow
+                // ln2 in Q16.16 = 45426
+                ln_product = $signed(log2_combined) * 45426;
+                compute_ln = ln_product >>> 16;
             end
         end
     endfunction
