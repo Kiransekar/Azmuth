@@ -31,7 +31,7 @@ module xcew_top (
     wire [11:0] core_csr_addr;
     wire core_csr_wr_en;
     wire [31:0] core_csr_wr_data;
-    wire [31:0] core_csr_rd_data;
+    reg [31:0] core_csr_rd_data;
     wire [31:0] core_xcew_req;
     wire core_xcew_ready;
     wire [31:0] core_xcew_resp;
@@ -111,12 +111,12 @@ module xcew_top (
     wire [31:0] eml_subexpr_result;
 
     // SNN TTFS and STDP signals (v1.1)
-    wire snn_ttfs_enable;
-    wire [2:0] snn_t_window;
-    wire [2:0] snn_refractory_cycles;
-    wire [3:0] snn_stdp_policy;
-    wire snn_stdp_enable;
-    wire snn_learning_enable;
+    reg snn_ttfs_enable;
+    reg [2:0] snn_t_window;
+    reg [2:0] snn_refractory_cycles;
+    reg [3:0] snn_stdp_policy;
+    reg snn_stdp_enable;
+    reg snn_learning_enable;
     wire [31:0] snn_input_current;
     wire snn_current_valid;
     wire snn_spike_out;
@@ -145,6 +145,9 @@ module xcew_top (
     end
 
     // Instantiate RISC-V core
+    wire [31:0] core_rs1_data;
+    wire [31:0] core_rs2_data;
+    wire        core_xcew_valid;
     riscv_core core_inst (
         .clk(clk_250mhz),
         .rst(i_rst),
@@ -160,19 +163,22 @@ module xcew_top (
         .csr_wr_data(core_csr_wr_data),
         .csr_rd_data(core_csr_rd_data),
         .o_xcew_req(core_xcew_req),
+        .o_xcew_valid(core_xcew_valid),
         .i_xcew_ready(core_xcew_ready),
         .i_xcew_resp(core_xcew_resp),
         .i_xcew_done(core_xcew_done),
+        .o_rs1_data(core_rs1_data),
+        .o_rs2_data(core_rs2_data),
         .wb_stall(core_wb_stall),
         .exception(core_exception),
         .interrupt(core_interrupt)
     );
 
     // Fetch from Boot ROM via AXI interconnect
-    assign core_instr = (core_pc[11:2] < 1024) ? instr_rom[core_pc[11:2]] : 32'h00000013; // Default NOP
+    assign core_instr = (core_pc[12:2] < 11'd1024) ? instr_rom[core_pc[11:2]] : 32'h00000013; // Default NOP
 
     // AXI4-Lite interconnect
-    axi_lite_interconnect interconnect_inst (
+    axi_lite_interconnect_v1_1 interconnect_inst (
         .aclk(clk_250mhz),
         .aresetn(rst_n),
 
@@ -349,7 +355,7 @@ module xcew_top (
     );
 
     // Boot ROM (simplified)
-    assign rom_rdata = (rom_araddr[11:2] < 1024) ? instr_rom[rom_araddr[11:2]] : 32'h00000000;
+    assign rom_rdata = (rom_araddr[12:2] < 11'd1024) ? instr_rom[rom_araddr[11:2]] : 32'h00000000;
     assign rom_rvalid = rom_arvalid;  // Always ready to respond (ROM)
     assign rom_rresp = 2'b00;  // OKAY response
     assign rom_bvalid = 1'b0;  // Boot ROM is read-only
@@ -394,11 +400,17 @@ module xcew_top (
     );
 
     // EML DAG Cache (v1.1) - Integrated with CSR control
+    wire [7:0]  dag_cache_tag_wr, dag_cache_data_wr, dag_cache_lru_wr;
+    wire [7:0]  dag_cache_tag_rd, dag_cache_data_rd, dag_cache_lru_rd;
+    wire [31:0] dag_cache_data_out;
+    wire [7:0]  dag_cache_lru_out;
+    assign dag_cache_data_out = 32'h0;
+    assign dag_cache_lru_out = 8'h0;
     eml_dag_cache eml_dag_cache_inst (
         .clk(clk_250mhz),
         .rst(i_rst),
-        .enable(1'b1),  // Enable DAG functionality
-        .dag_mode(1'b1),  // DAG mode enabled by default
+        .enable(1'b1),
+        .dag_mode(1'b1),
         .expr_hash_in(eml_expr_hash_in),
         .expr_result_in(eml_expr_result_in),
         .expr_valid_in(eml_expr_valid_in),
@@ -410,7 +422,15 @@ module xcew_top (
         .subexpr_hash(eml_subexpr_hash),
         .subexpr_valid(eml_subexpr_valid),
         .subexpr_cached(eml_subexpr_cached),
-        .subexpr_result(eml_subexpr_result)
+        .subexpr_result(eml_subexpr_result),
+        .cache_tag_wr(dag_cache_tag_wr),
+        .cache_data_wr(dag_cache_data_wr),
+        .cache_lru_wr(dag_cache_lru_wr),
+        .cache_tag_rd(dag_cache_tag_rd),
+        .cache_data_rd(dag_cache_data_rd),
+        .cache_lru_rd(dag_cache_lru_rd),
+        .cache_data_out(dag_cache_data_out),
+        .cache_lru_out(dag_cache_lru_out)
     );
 
     // EML CSR and Memo Cache with DAG extensions
@@ -436,7 +456,7 @@ module xcew_top (
     );
 
     // SNN TTFS Neuron (v1.1)
-    lif_ttfs_neuron snn_ttfs_inst (
+    lif_ttfs_neuron_v1_1 snn_ttfs_inst (
         .clk(clk_250mhz),
         .rst(i_rst),
         .ttfs_enable(snn_ttfs_enable),
@@ -448,12 +468,11 @@ module xcew_top (
         .spike_valid(snn_spike_valid),
         .membrane_potential(snn_membrane_potential),
         .v_threshold(32'h40000000),  // Default threshold
-        .v_rest(32'h00000000),      // Resting potential
-        .leak_factor(32'd100)        // Leak factor
+        .v_rest(32'h00000000)       // Resting potential
     );
 
     // SNN STDP Engine (v1.1)
-    stdp_engine snn_stdp_inst (
+    stdp_engine_v1_1 snn_stdp_inst (
         .clk(clk_250mhz),
         .rst(i_rst),
         .stdp_policy(snn_stdp_policy),

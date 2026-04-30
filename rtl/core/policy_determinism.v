@@ -106,7 +106,7 @@ module policy_determinism (
 
                     // Execute policy operations in fixed time
                     // Simulate policy computation with fixed steps
-                    temp_result <= temp_result + cycle_counter + internal_policy_data[15:0];
+                    temp_result <= temp_result + {{16{1'b0}}, cycle_counter} + {{16{1'b0}}, internal_policy_data[15:0]};
 
                     // Check for timeout in deterministic mode
                     if (det_en && cycle_counter >= max_cycle_setting) begin
@@ -124,7 +124,8 @@ module policy_determinism (
                 end
 
                 FINALIZE: begin
-                    policy_result <= temp_result ^ {cycle_counter, internal_policy_data[15:0]};
+                    temp_result <= temp_result + {{16{1'b0}}, cycle_counter} + {{16{1'b0}}, internal_policy_data[15:0]};
+                    policy_result <= temp_result ^ {16'h0, cycle_counter};
                     policy_done <= 1'b1;
                     exec_active <= 1'b0;
 
@@ -159,7 +160,7 @@ module policy_determinism (
     // CSR read logic
     always @(*) begin
         case (csr_addr)
-            12'h7CB: csr_rd_data = {16'h0, 1'b0, timeout_occurred, 1'b0, det_en, max_cycle_setting[4:1]};
+            12'h7CB: csr_rd_data = {16'h0, 1'b0, timeout_occurred, 1'b0, det_en, {8{1'b0}}, max_cycle_setting[4:1]};
             default: csr_rd_data = 32'h0;
         endcase
     end
@@ -210,8 +211,8 @@ module fixed_cycle_arith #(
 
                 // Perform operations each cycle regardless of actual computation need
                 case (op_type)
-                    4'b0001: accumulator <= accumulator + temp_a + cycle_counter;  // ADD-like
-                    4'b0010: accumulator <= accumulator ^ temp_b ^ cycle_counter;  // XOR-like
+                    4'b0001: accumulator <= accumulator + temp_a + {{27{1'b0}}, cycle_counter};  // ADD-like
+                    4'b0010: accumulator <= accumulator ^ temp_b ^ {{27{1'b0}}, cycle_counter};  // XOR-like
                     4'b0011: accumulator <= (accumulator <<< 1) ^ temp_a;        // Shift-like
                     default: accumulator <= accumulator + 32'h1;                  // Default increment
                 endcase

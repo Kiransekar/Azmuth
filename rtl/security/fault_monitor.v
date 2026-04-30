@@ -249,7 +249,7 @@ module fault_monitor (
     // CSR read logic
     always @(*) begin
         case (csr_addr)
-            12'h7CC: csr_rd_data = {26'h0, watchdog_trip, ecc_error, fault_status_reg[5:0]};
+            12'h7CC: csr_rd_data = {24'h0, watchdog_trip, ecc_error, fault_status_reg[5:0]};
             12'h7CD: csr_rd_data = watchdog_timeout_reg;
             12'h7CE: csr_rd_data = ecc_scrub_count_reg;
             12'h7CF: csr_rd_data = ecc_corrected_count_reg;
@@ -277,7 +277,8 @@ module ecc_memory #(
     // Simple parity for SECDED (simplified)
     wire parity;
     assign parity = ^wr_data;
-    wire [65:0] wr_data_ecc = {wr_data, parity};
+    wire overall_parity = ^{wr_data, parity};
+    wire [65:0] wr_data_ecc = {wr_data, parity, overall_parity};
     reg [65:0] memory_array [0:(1<<ADDR_WIDTH)-1];
     wire [65:0] rd_data_ecc = memory_array[addr];
     wire rd_parity = ^rd_data_ecc[63:0];

@@ -190,22 +190,22 @@ module stdp_engine (
                 endcase
 
                 // Apply weight change with saturation (no $signed needed)
-                signed_current_weight <= {current_weight[7], current_weight};
+                signed_current_weight <= current_weight;
                 if (pending_direction) begin
                     // LTP
-                    if ({1'b0, signed_current_weight} > SIGNED_WEIGHT_MAX - {1'b0, weight_change}) begin
-                        updated_weight <= SIGNED_WEIGHT_MAX;
-                    end else if ({1'b0, signed_current_weight} < {1'b0, SIGNED_WEIGHT_MIN} + {1'b0, weight_change}) begin
-                        updated_weight <= {1'b0, SIGNED_WEIGHT_MIN};
+                    if ({1'b0, signed_current_weight} > {1'b0, SIGNED_WEIGHT_MAX[7:0]} - {1'b0, weight_change}) begin
+                        updated_weight <= SIGNED_WEIGHT_MAX[7:0];
+                    end else if ({1'b0, signed_current_weight} < {1'b0, SIGNED_WEIGHT_MIN[7:0]} + {1'b0, weight_change}) begin
+                        updated_weight <= SIGNED_WEIGHT_MIN[7:0];
                     end else begin
                         updated_weight <= signed_current_weight + weight_change;
                     end
                 end else begin
                     // LTD
-                    if ({1'b0, signed_current_weight} > SIGNED_WEIGHT_MAX + {1'b0, weight_change}) begin
-                        updated_weight <= SIGNED_WEIGHT_MAX;
-                    end else if ({1'b0, signed_current_weight} < {1'b0, SIGNED_WEIGHT_MIN} + {1'b0, weight_change}) begin
-                        updated_weight <= {1'b0, SIGNED_WEIGHT_MIN};
+                    if ({1'b0, signed_current_weight} > {1'b0, SIGNED_WEIGHT_MAX[7:0]} + {1'b0, weight_change}) begin
+                        updated_weight <= SIGNED_WEIGHT_MAX[7:0];
+                    end else if ({1'b0, signed_current_weight} < {1'b0, SIGNED_WEIGHT_MIN[7:0]} + {1'b0, weight_change}) begin
+                        updated_weight <= SIGNED_WEIGHT_MIN[7:0];
                     end else begin
                         updated_weight <= signed_current_weight - weight_change;
                     end

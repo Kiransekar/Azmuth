@@ -92,7 +92,7 @@ module axi_lite_interconnect_v1_1 (
     reg [4:0] m2_aw_slave, m2_ar_slave, m3_aw_slave, m3_ar_slave;
 
     always @(*) begin
-        if      (m0_awaddr >= ROM_BASE  && m0_awaddr <= ROM_END)  m0_aw_slave = SLAVE_ROM;
+        if      (m0_awaddr <= ROM_END)  m0_aw_slave = SLAVE_ROM;
         else if (m0_awaddr >= SRAM_BASE && m0_awaddr <= SRAM_END) m0_aw_slave = SLAVE_SRAM;
         else if (m0_awaddr >= EML_BASE  && m0_awaddr <= EML_END)  m0_aw_slave = SLAVE_EML;
         else if (m0_awaddr >= SNN_BASE  && m0_awaddr <= SNN_END)  m0_aw_slave = SLAVE_SNN;
@@ -100,7 +100,7 @@ module axi_lite_interconnect_v1_1 (
         else                                                       m0_aw_slave = 5'h0;
     end
     always @(*) begin
-        if      (m0_araddr >= ROM_BASE  && m0_araddr <= ROM_END)  m0_ar_slave = SLAVE_ROM;
+        if      (m0_araddr <= ROM_END)  m0_ar_slave = SLAVE_ROM;
         else if (m0_araddr >= SRAM_BASE && m0_araddr <= SRAM_END) m0_ar_slave = SLAVE_SRAM;
         else if (m0_araddr >= EML_BASE  && m0_araddr <= EML_END)  m0_ar_slave = SLAVE_EML;
         else if (m0_araddr >= SNN_BASE  && m0_araddr <= SNN_END)  m0_ar_slave = SLAVE_SNN;
@@ -108,7 +108,7 @@ module axi_lite_interconnect_v1_1 (
         else                                                       m0_ar_slave = 5'h0;
     end
     always @(*) begin
-        if      (m1_awaddr >= ROM_BASE  && m1_awaddr <= ROM_END)  m1_aw_slave = SLAVE_ROM;
+        if      (m1_awaddr <= ROM_END)  m1_aw_slave = SLAVE_ROM;
         else if (m1_awaddr >= SRAM_BASE && m1_awaddr <= SRAM_END) m1_aw_slave = SLAVE_SRAM;
         else if (m1_awaddr >= EML_BASE  && m1_awaddr <= EML_END)  m1_aw_slave = SLAVE_EML;
         else if (m1_awaddr >= SNN_BASE  && m1_awaddr <= SNN_END)  m1_aw_slave = SLAVE_SNN;
@@ -116,7 +116,7 @@ module axi_lite_interconnect_v1_1 (
         else                                                       m1_aw_slave = 5'h0;
     end
     always @(*) begin
-        if      (m1_araddr >= ROM_BASE  && m1_araddr <= ROM_END)  m1_ar_slave = SLAVE_ROM;
+        if      (m1_araddr <= ROM_END)  m1_ar_slave = SLAVE_ROM;
         else if (m1_araddr >= SRAM_BASE && m1_araddr <= SRAM_END) m1_ar_slave = SLAVE_SRAM;
         else if (m1_araddr >= EML_BASE  && m1_araddr <= EML_END)  m1_ar_slave = SLAVE_EML;
         else if (m1_araddr >= SNN_BASE  && m1_araddr <= SNN_END)  m1_ar_slave = SLAVE_SNN;
@@ -124,7 +124,7 @@ module axi_lite_interconnect_v1_1 (
         else                                                       m1_ar_slave = 5'h0;
     end
     always @(*) begin
-        if      (m2_awaddr >= ROM_BASE  && m2_awaddr <= ROM_END)  m2_aw_slave = SLAVE_ROM;
+        if      (m2_awaddr <= ROM_END)  m2_aw_slave = SLAVE_ROM;
         else if (m2_awaddr >= SRAM_BASE && m2_awaddr <= SRAM_END) m2_aw_slave = SLAVE_SRAM;
         else if (m2_awaddr >= EML_BASE  && m2_awaddr <= EML_END)  m2_aw_slave = SLAVE_EML;
         else if (m2_awaddr >= SNN_BASE  && m2_awaddr <= SNN_END)  m2_aw_slave = SLAVE_SNN;
@@ -132,7 +132,7 @@ module axi_lite_interconnect_v1_1 (
         else                                                       m2_aw_slave = 5'h0;
     end
     always @(*) begin
-        if      (m2_araddr >= ROM_BASE  && m2_araddr <= ROM_END)  m2_ar_slave = SLAVE_ROM;
+        if      (m2_araddr <= ROM_END)  m2_ar_slave = SLAVE_ROM;
         else if (m2_araddr >= SRAM_BASE && m2_araddr <= SRAM_END) m2_ar_slave = SLAVE_SRAM;
         else if (m2_araddr >= EML_BASE  && m2_araddr <= EML_END)  m2_ar_slave = SLAVE_EML;
         else if (m2_araddr >= SNN_BASE  && m2_araddr <= SNN_END)  m2_ar_slave = SLAVE_SNN;
@@ -140,7 +140,7 @@ module axi_lite_interconnect_v1_1 (
         else                                                       m2_ar_slave = 5'h0;
     end
     always @(*) begin
-        if      (m3_awaddr >= ROM_BASE  && m3_awaddr <= ROM_END)  m3_aw_slave = SLAVE_ROM;
+        if      (m3_awaddr <= ROM_END)  m3_aw_slave = SLAVE_ROM;
         else if (m3_awaddr >= SRAM_BASE && m3_awaddr <= SRAM_END) m3_aw_slave = SLAVE_SRAM;
         else if (m3_awaddr >= EML_BASE  && m3_awaddr <= EML_END)  m3_aw_slave = SLAVE_EML;
         else if (m3_awaddr >= SNN_BASE  && m3_awaddr <= SNN_END)  m3_aw_slave = SLAVE_SNN;
@@ -148,7 +148,7 @@ module axi_lite_interconnect_v1_1 (
         else                                                       m3_aw_slave = 5'h0;
     end
     always @(*) begin
-        if      (m3_araddr >= ROM_BASE  && m3_araddr <= ROM_END)  m3_ar_slave = SLAVE_ROM;
+        if      (m3_araddr <= ROM_END)  m3_ar_slave = SLAVE_ROM;
         else if (m3_araddr >= SRAM_BASE && m3_araddr <= SRAM_END) m3_ar_slave = SLAVE_SRAM;
         else if (m3_araddr >= EML_BASE  && m3_araddr <= EML_END)  m3_ar_slave = SLAVE_EML;
         else if (m3_araddr >= SNN_BASE  && m3_araddr <= SNN_END)  m3_ar_slave = SLAVE_SNN;

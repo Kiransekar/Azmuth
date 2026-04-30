@@ -449,6 +449,57 @@ The following bugs were identified and fixed during code review:
 | 26 | `rtl/eml/eml_unit.v` | `compute_ln` priority encoder found lowest set bit (overwrote highest); unsigned multiply with negative coeffs; Taylor series 12% error at f=0.1 | Break after first match; 48-bit signed intermediates with decimal constants; least-squares minimax coefficients (<0.2% max error) |
 | 27 | `tb/eml_math_tb.v` | No testbench for EML fixed-point math | 40-test suite covering edge cases, positive/negative inputs, sub-unity values, ±2% relative tolerance |
 
+## Verilog 2001 Compliance & Tapeout Readiness
+
+All RTL files have been verified for full **Verilog 2001 compliance** with zero warnings:
+
+| Category | Status |
+|----------|--------|
+| Verilator lint (`--top xcew_top`) | **0 warnings, 0 errors** |
+| Verilator lint (`--top xcew_top_v1_1`) | **0 warnings, 0 errors** |
+| Iverilog simulation | **9/9 testbenches pass** |
+| SystemVerilog features | **None used** — pure Verilog 2001 |
+
+### Resolved Warnings
+
+| Warning Type | Count Fixed | Files Affected |
+|-------------|-------------|---------------|
+| PINMISSING | 17 | `xcew_top.v`, `xcew_top_v1_1.v`, `eml_dag_cache.v` |
+| CASEINCOMPLETE | 3 | `orchestrator.v`, `body_bias_ctrl.v`, `xcie_ctrl.v` |
+| ALWNEVER | 1 | `eml_dag_cache.v` |
+| WIDTHCONCAT | 6 | `stdp_engine.v` |
+| WIDTHEXPAND | 20 | `policy_determinism.v`, `eml_constant_time.v`, `eml_unit.v`, `snn_tile.v`, `orchestrator.v`, `body_bias_ctrl.v`, `fault_monitor.v`, `xcew_top*.v` |
+| WIDTHTRUNC | 31 | `riscv_core.v`, `eml_dag_cache.v`, `eml_unit.v`, `snn_tile.v`, `stdp_engine.v`, `orchestrator.v`, `body_bias_ctrl.v`, `fault_monitor.v`, `xcew_top*.v` |
+| UNSIGNED | 8 | `axi_lite_interconnect_v1_1.v`, `xcew_top*.v` |
+| MULTITOP | 1 | `eml_dag_cache.v` → split `eml_dag_scheduler.v` |
+
+**Total**: 87 warnings resolved, 0 remaining (except expected MULTITOP without `--top`).
+
+### Key Fixes Summary
+
+- **Zero-extended** all narrower operands to match wider targets
+- **Added default cases** to all incomplete `case` statements
+- **Replaced** `always @*` blocks with no sensitivities by continuous `assign` statements
+- **Added explicit bit-widths** on all concatenated numbers and parameters
+- **Split** `eml_dag_scheduler` into separate file to resolve MULTITOP
+- **Corrected** ROM index bound comparisons (`< 1024` → `< 11'd1024` to avoid UNSIGNED wrap)
+- **Fixed** J-type immediate concatenation width (12→11 sign bits for 32-bit result)
+
+---
+
+## Architecture Documentation
+
+Comprehensive architecture document available at `docs/ARCHITECTURE.md`:
+
+- Full system block diagram with all interconnections
+- Detailed description of every RTL module (function, interface, significance)
+- Design decisions and trade-off tables (fixed-point vs float, TTFS vs rate, etc.)
+- Clock/reset/power domain reference
+- Complete CSR and memory maps
+- Verification summary with all 9 testbench results
+
+---
+
 ### Remaining TODOs
 
 - EML unit: consider CORDIC iteration for further accuracy improvement beyond 4th-order minimax

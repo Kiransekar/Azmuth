@@ -5,6 +5,7 @@ rtl/core/xcie_ctrl.v
 rtl/core/xcie_decoder.v
 rtl/eml/eml_constant_time.v
 rtl/eml/eml_dag_cache.v
+rtl/eml/eml_dag_scheduler.v
 rtl/eml/eml_unit.v
 rtl/nvm/nvm_ctrl.v
 rtl/power/body_bias_ctrl.v

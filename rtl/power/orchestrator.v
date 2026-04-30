@@ -70,6 +70,7 @@ module orchestrator (
                 case (csr_addr)
                     12'h7C8: pwr_ctrl_reg <= csr_wr_data;
                     12'h7C9: bias_ctrl_reg <= csr_wr_data;
+                    default: ;
                 endcase
             end
 
@@ -126,7 +127,7 @@ module orchestrator (
     // CSR read logic
     always @(*) begin
         case (csr_addr)
-            12'h7C8: csr_rd_data = {28'h0, current_tile_state[TILE_NVM], current_tile_state[TILE_SNN],
+            12'h7C8: csr_rd_data = {3'h0, current_tile_state[TILE_NVM], current_tile_state[TILE_SNN],
                                    current_tile_state[TILE_EML], current_tile_state[TILE_CORE],
                                    pwr_ctrl_reg[15:8], pwr_ctrl_reg[7:4], pwr_ctrl_reg[8]};
             12'h7C9: csr_rd_data = bias_ctrl_reg;
@@ -205,7 +206,7 @@ module power_state_manager (
         else begin
             for (i = 0; i < 4; i = i + 1) begin
                 if (req_power_state[i] != granted_power_state[i]) begin
-                    pending_request[i] <= req_power_state[i];
+                    pending_request[i] <= {{3{1'b0}}, req_power_state[i]};
 
                     // Handle power state transitions
                     case ({granted_power_state[i], req_power_state[i]})

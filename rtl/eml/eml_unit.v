@@ -161,11 +161,11 @@ module eml_unit (
                 // Normalize: shift so bit 16 is the highest set bit
                 // log2_int = leading_one - 16 (signed: negative for values < 1.0)
                 if (leading_one >= 16) begin
-                    x_norm = input_val >> (leading_one - 16);
-                    log2_int = leading_one - 16;  // Positive
+                    x_norm = input_val >> (leading_one - 5'd16);
+                    log2_int = {{11{1'b0}}, leading_one - 5'd16};  // Positive
                 end else begin
-                    x_norm = input_val << (16 - leading_one);
-                    log2_int = leading_one - 16;  // Negative for values < 1.0
+                    x_norm = input_val << (5'd16 - leading_one);
+                    log2_int = {{11{1'b0}}, leading_one - 5'd16};  // Negative for values < 1.0
                 end
 
                 // m = normalized value in [1.0, 2.0), m_minus1 = m - 1.0
@@ -180,7 +180,7 @@ module eml_unit (
                 //   a2 =  0.3128  →  20499
                 //   a3 = -0.0793  →  -5198
                 // Use decimal signed constants (hex two's complement breaks 48-bit multiply)
-                m_minus1_w = $signed(m_minus1);
+                m_minus1_w = {{16{m_minus1[31]}}, m_minus1};
                 poly_w = m_minus1_w * (-5198);            // a3 * f
                 s_frac_w = poly_w >>> 16;
                 s_frac_w = s_frac_w + 20499;              // + a2
@@ -202,8 +202,8 @@ module eml_unit (
                 // ln(x) = log2(x) * ln(2) ≈ log2(x) * 0.693147
                 // Use 48-bit intermediate to avoid signed 32-bit overflow
                 // ln2 in Q16.16 = 45426
-                ln_product = $signed(log2_combined) * 45426;
-                compute_ln = ln_product >>> 16;
+                ln_product = $signed(log2_combined) * 48'sd45426;
+                compute_ln = ln_product[47:16];
             end
         end
     endfunction
@@ -234,7 +234,7 @@ module eml_unit (
     // Check memo cache
     wire [7:0] current_hash = fetch_hash;
     wire memo_check_valid = fetch_valid;
-    wire [7:0] memo_idx = current_hash[6:0];  // Use lower 7 bits as index
+    wire [6:0] memo_idx = current_hash[6:0];  // Use lower 7 bits as index
 
     wire memo_hit_comb = memo_check_valid &
                          memo_valid[memo_idx] &
@@ -306,7 +306,7 @@ module eml_unit (
 
                     // Update memo cache on miss
                     if (!memo_hit_comb) begin
-                        memo_tags[memo_idx] <= current_hash;
+                        memo_tags[memo_idx] <= current_hash[7:0];
                         memo_data[memo_idx] <= o_rd;
                         memo_valid[memo_idx] <= 1'b1;
                     end

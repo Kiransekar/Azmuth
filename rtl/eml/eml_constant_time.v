@@ -189,7 +189,7 @@ module eml_constant_time (
                     cycle_counter <= cycle_counter + 1;
 
                     // Do dummy operations during padding
-                    intermediate_result <= intermediate_result + cycle_counter;
+                    intermediate_result <= intermediate_result + {{16{1'b0}}, cycle_counter};
 
                     if (cycle_counter >= padding_cycles) begin
                         state <= ST_FINALIZE;

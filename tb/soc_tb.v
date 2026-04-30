@@ -1,5 +1,6 @@
 // tb/soc_tb.v
 // Testbench for Xcew SOC with AXI4-Lite interconnect
+// Verilog 2001 compliant
 
 `timescale 1ns/1ps
 
@@ -20,6 +21,14 @@ module soc_tb();
     wire [31:0] core_mem_rdata;
     wire core_mem_we;
 
+    // Test variables (module-level for V2001)
+    integer cycle_count;
+    integer bus_transactions;
+    integer i;
+    integer sram_accessed;
+    integer write_observed;
+    reg [31:0] last_core_pc;
+
     // Assign internal signals for monitoring
     assign core_pc = uut_soc.core_inst.pc;
     assign core_instr = uut_soc.core_inst.instr;
@@ -38,11 +47,10 @@ module soc_tb();
     // Clock generation
     initial begin
         i_clk = 0;
-        forever #2 i_clk = ~i_clk;  // 4ns period (250MHz)
+        forever #2 i_clk = ~i_clk;
     end
 
     // Cycle counter
-    integer cycle_count;
     always @(posedge i_clk) begin
         if (i_rst) cycle_count <= 0;
         else cycle_count <= cycle_count + 1;
@@ -54,10 +62,13 @@ module soc_tb();
         $dumpfile("soc_tb.vcd");
         $dumpvars(0, soc_tb);
 
-        // Initialize signals
         i_rst = 1;
+        last_core_pc = 32'h0;
+        bus_transactions = 0;
+        sram_accessed = 0;
+        write_observed = 0;
 
-        #22;  // Wait for a few clock cycles
+        #22;
         i_rst = 0;
         $display("[%0t] Reset deasserted at cycle %0d", $time, cycle_count);
 
@@ -65,60 +76,60 @@ module soc_tb();
         wait (core_pc == 32'h00000000);
         $display("[%0t] PASS: Core PC reset to 0x00000000 (cycle %0d)", $time, cycle_count);
 
-        // Wait for a few instructions to execute
         repeat(5) @(posedge i_clk);
         $display("[%0t] Core PC after instructions: %h (cycle %0d)", $time, core_pc, cycle_count);
 
         // Test 2: AXI read from SRAM (monitor for address 0x1000)
-        fork
-            begin
-                wait (core_mem_addr[31:16] == 16'h0001);  // SRAM region
+        sram_accessed = 0;
+        i = 0;
+        while (i < 20 && !sram_accessed) begin
+            @(posedge i_clk);
+            if (core_mem_addr[31:16] == 16'h0001) begin
                 $display("[%0t] PASS: Core accessed SRAM region at 0x%h (cycle %0d)", $time, core_mem_addr, cycle_count);
+                sram_accessed = 1;
             end
-            begin
-                #200;  // Timeout
-                $display("[%0t] WARNING: No SRAM access observed within timeout", $time);
-            end
-        join_any
+            i = i + 1;
+        end
+        if (!sram_accessed) begin
+            $display("[%0t] WARNING: No SRAM access observed within timeout", $time);
+        end
 
         // Test 3: AXI write operation (monitor WE signal)
-        fork
-            begin
-                wait (core_mem_we == 1'b1);
+        write_observed = 0;
+        i = 0;
+        while (i < 20 && !write_observed) begin
+            @(posedge i_clk);
+            if (core_mem_we == 1'b1) begin
                 $display("[%0t] PASS: Core issued write operation to address 0x%h (cycle %0d)", $time, core_mem_addr, cycle_count);
+                write_observed = 1;
             end
-            begin
-                #200;  // Timeout
-                $display("[%0t] INFO: No write operation observed within timeout", $time);
-            end
-        join_any
+            i = i + 1;
+        end
+        if (!write_observed) begin
+            $display("[%0t] INFO: No write operation observed within timeout", $time);
+        end
 
         // Test 4: Simultaneous master requests simulation
-        // Force AXI transaction on different masters to verify arbitration
         $display("[%0t] Simulating arbitration priority (Core > EML > SNN > NVM) at cycle %0d", $time, cycle_count);
 
         // Test 5: Check for basic bus transactions
-        integer bus_transactions = 0;
-        for (integer i = 0; i < 20; i = i + 1) begin
+        bus_transactions = 0;
+        for (i = 0; i < 20; i = i + 1) begin
             @(posedge i_clk);
-            if (uut_soc.interconnect_inst.aw_select[0]) bus_transactions = bus_transactions + 1;  // Core
+            // Monitor core activity
+            if (core_mem_we || core_mem_addr !== 32'h0) begin
+                bus_transactions = bus_transactions + 1;
+            end
         end
 
-        $display("[%0t] Observed %0d transactions from Core (highest priority) (cycle %0d)", $time, bus_transactions, cycle_count);
+        $display("[%0t] Observed %0d bus transactions (cycle %0d)", $time, bus_transactions, cycle_count);
 
-        // Coverage assertions
+        // Coverage checks
         if (cycle_count > 10) begin
-            $display("[%0t] *** PASS: SOC operated for %0d cycles with bus activity ***", $time, cycle_count);
+            $display("[%0t] PASS: SOC operated for %0d cycles with bus activity", $time, cycle_count);
         end else begin
-            $display("[%0t] *** FAIL: SOC did not operate correctly ***", $time);
+            $display("[%0t] FAIL: SOC did not operate correctly", $time);
         end
-
-        // Check that reset and basic operation worked
-        assert (cycle_count > 5) else $error("SOC failed to operate beyond reset");
-
-        // Additional AXI compliance checks
-        assert (uut_soc.interconnect_inst.m0_awready === uut_soc.interconnect_inst.m0_awready) else
-            $error("m0_awready signal not stable");
 
         $display("[%0t] === AXI INTERCONNECT TEST SUMMARY ===", $time);
         $display("Total cycles: %0d", cycle_count);
@@ -131,8 +142,7 @@ module soc_tb();
         $finish;
     end
 
-    // Monitor AXI transactions during simulation
-    reg [31:0] last_core_pc = 32'h0;
+    // Monitor PC changes
     always @(posedge i_clk) begin
         if (!i_rst && core_pc !== last_core_pc) begin
             $display("[%0t] Core PC changed from %h to %h (cycle %0d)", $time, last_core_pc, core_pc, cycle_count);

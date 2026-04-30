@@ -138,6 +138,7 @@ module xcie_ctrl (
                     4'h4: o_ctrl_memo_wr = 1'b1;    // MSTORE operation
                     4'h5: o_ctrl_snn_en = 1'b1;     // SNN operation
                     4'h6: o_ctrl_nvm_wr = 1'b1;     // POL update operation
+                    default: ;
                 endcase
             end
 

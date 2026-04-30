@@ -1,6 +1,7 @@
 // tb/axi_lite_interconnect_v1_1_tb.v
 // Testbench for AXI4-Lite interconnect v1.1
 // Tests: handshake, ROM read, SRAM write, contention arbitration
+// Verilog 2001 compliant
 
 `timescale 1ns/1ps
 
@@ -8,39 +9,45 @@ module axi_lite_interconnect_v1_1_tb;
 
     reg  aclk, aresetn;
 
-    // Master 0 signals
+    // Master 0 signals (TB drives inputs, DUT drives outputs)
     reg  [15:0] m0_awaddr;
-    reg  m0_awvalid, m0_awready;
+    reg         m0_awvalid;
+    wire        m0_awready;       // DUT output
     reg  [31:0] m0_wdata;
     reg  [3:0]  m0_wstrb;
-    reg  m0_wvalid, m0_wready;
-    wire [1:0]  m0_bresp;
-    wire m0_bvalid;
-    reg  m0_bready;
+    reg         m0_wvalid;
+    wire        m0_wready;        // DUT output
+    wire [1:0]  m0_bresp;        // DUT output
+    wire        m0_bvalid;       // DUT output
+    reg         m0_bready;
     reg  [15:0] m0_araddr;
-    reg  m0_arvalid, m0_arready;
-    wire [31:0] m0_rdata;
-    wire [1:0]  m0_rresp;
-    wire m0_rvalid;
-    reg  m0_rready;
+    reg         m0_arvalid;
+    wire        m0_arready;       // DUT output
+    wire [31:0] m0_rdata;        // DUT output
+    wire [1:0]  m0_rresp;        // DUT output
+    wire        m0_rvalid;       // DUT output
+    reg         m0_rready;
 
     // Master 1 signals
     reg  [15:0] m1_awaddr;
-    reg  m1_awvalid, m1_awready;
+    reg         m1_awvalid;
+    wire        m1_awready;       // DUT output
     reg  [31:0] m1_wdata;
     reg  [3:0]  m1_wstrb;
-    reg  m1_wvalid, m1_wready;
-    wire [1:0]  m1_bresp;
-    wire m1_bvalid;
-    reg  m1_bready;
+    reg         m1_wvalid;
+    wire        m1_wready;        // DUT output
+    wire [1:0]  m1_bresp;        // DUT output
+    wire        m1_bvalid;       // DUT output
+    reg         m1_bready;
     reg  [15:0] m1_araddr;
-    reg  m1_arvalid, m1_arready;
-    wire [31:0] m1_rdata;
-    wire [1:0]  m1_rresp;
-    wire m1_rvalid;
-    reg  m1_rready;
+    reg         m1_arvalid;
+    wire        m1_arready;       // DUT output
+    wire [31:0] m1_rdata;        // DUT output
+    wire [1:0]  m1_rresp;        // DUT output
+    wire        m1_rvalid;       // DUT output
+    reg         m1_rready;
 
-    // Master 2/3 (unused)
+    // Master 2/3 (unused - tie off inputs)
     wire [15:0] m2_awaddr; wire m2_awready; wire [31:0] m2_wdata;
     wire [3:0]  m2_wstrb; wire m2_wready; wire [1:0] m2_bresp;
     wire m2_bvalid; wire [15:0] m2_araddr; wire m2_arready;
@@ -50,21 +57,31 @@ module axi_lite_interconnect_v1_1_tb;
     wire m3_bvalid; wire [15:0] m3_araddr; wire m3_arready;
     wire [31:0] m3_rdata; wire [1:0] m3_rresp; wire m3_rvalid;
 
-    // Slave 0 (ROM)
-    wire [15:0] s0_awaddr; wire s0_awvalid; reg  s0_awready;
-    wire [31:0] s0_wdata; wire [3:0] s0_wstrb; wire s0_wvalid; reg  s0_wready;
-    wire [1:0]  s0_bresp; wire s0_bvalid; reg  s0_bready;
-    wire [15:0] s0_araddr; wire s0_arvalid; reg  s0_arready;
-    wire [31:0] s0_rdata; wire [1:0] s0_rresp; wire s0_rvalid; reg  s0_rready;
+    // Slave 0 (ROM) - DUT outputs are wire, DUT inputs are reg
+    wire [15:0] s0_awaddr; wire s0_awvalid;
+    reg         s0_awready;       // TB drives (DUT input)
+    wire [31:0] s0_wdata; wire [3:0] s0_wstrb; wire s0_wvalid;
+    reg         s0_wready;        // TB drives (DUT input)
+    wire [1:0]  s0_bresp; wire s0_bvalid;
+    wire        s0_bready;        // DUT output
+    wire [15:0] s0_araddr; wire s0_arvalid;
+    reg         s0_arready;       // TB drives (DUT input)
+    wire [31:0] s0_rdata; wire [1:0] s0_rresp; wire s0_rvalid;
+    wire        s0_rready;        // DUT output
 
     // Slave 1 (SRAM)
-    wire [15:0] s1_awaddr; wire s1_awvalid; reg  s1_awready;
-    wire [31:0] s1_wdata; wire [3:0] s1_wstrb; wire s1_wvalid; reg  s1_wready;
-    wire [1:0]  s1_bresp; wire s1_bvalid; reg  s1_bready;
-    wire [15:0] s1_araddr; wire s1_arvalid; reg  s1_arready;
-    wire [31:0] s1_rdata; wire [1:0] s1_rresp; wire s1_rvalid; reg  s1_rready;
+    wire [15:0] s1_awaddr; wire s1_awvalid;
+    reg         s1_awready;       // TB drives (DUT input)
+    wire [31:0] s1_wdata; wire [3:0] s1_wstrb; wire s1_wvalid;
+    reg         s1_wready;        // TB drives (DUT input)
+    wire [1:0]  s1_bresp; wire s1_bvalid;
+    wire        s1_bready;        // DUT output
+    wire [15:0] s1_araddr; wire s1_arvalid;
+    reg         s1_arready;       // TB drives (DUT input)
+    wire [31:0] s1_rdata; wire [1:0] s1_rresp; wire s1_rvalid;
+    wire        s1_rready;        // DUT output
 
-    // Slave 2/3/4 (unused)
+    // Slave 2/3/4 (unused - all wire)
     wire [15:0] s2_awaddr; wire s2_awvalid; wire s2_awready;
     wire [31:0] s2_wdata; wire [3:0] s2_wstrb; wire s2_wvalid; wire s2_wready;
     wire [1:0]  s2_bresp; wire s2_bvalid; wire s2_bready;
@@ -145,8 +162,7 @@ module axi_lite_interconnect_v1_1_tb;
         .s4_rdata(s4_rdata), .s4_rresp(s4_rresp), .s4_rvalid(s4_rvalid), .s4_rready(s4_rready)
     );
 
-    // =====================================================================
-    // Test: ROM read addr ready (S0 is ROM, read-only)
+    // Test: ROM read, SRAM write, contention arbitration
     initial begin
         $dumpfile("tb/axi_v1_1_tb.vcd");
         $dumpvars(0, axi_lite_interconnect_v1_1_tb);
@@ -158,6 +174,8 @@ module axi_lite_interconnect_v1_1_tb;
         m1_awvalid = 0; m1_wvalid = 0; m1_arvalid = 0;
         m0_bready = 0; m0_rready = 0;
         m1_bready = 0; m1_rready = 0;
+        s0_awready = 0; s0_wready = 0; s0_arready = 0;
+        s1_awready = 0; s1_wready = 0; s1_arready = 0;
         #50;
         aresetn = 1;
         #20;
@@ -167,7 +185,7 @@ module axi_lite_interconnect_v1_1_tb;
         m0_araddr = 16'h0000;
         m0_arvalid = 1;
         m0_rready = 1;
-        s0_arready = 1; // Simulate ROM being ready
+        s0_arready = 1;
         wait (m0_arready);
         #10;
         m0_arvalid = 0;
@@ -197,20 +215,17 @@ module axi_lite_interconnect_v1_1_tb;
 
         // Test 3: Contention - M0 and M1 both request different slaves
         $display("--- Test 3: Arbitration - M0 vs M1 ---");
-        // M1 requests SRAM
         m1_awaddr = 16'h1100;
         m1_wdata  = 32'hCAFEBABE;
         m1_awvalid = 1;
         m1_wvalid = 1;
         s1_awready = 1;
         s1_wready = 1;
-        // M0 requests SRAM simultaneously
         m0_awaddr = 16'h1200;
         m0_wdata  = 32'hBADDD00D;
         m0_awvalid = 1;
         m0_wvalid = 1;
         #10;
-        // M0 should win arbitration (higher priority)
         if (m0_awready)
             $display("PASS: M0 won arbitration over M1");
         else
@@ -221,7 +236,6 @@ module axi_lite_interconnect_v1_1_tb;
         else
             $display("FAIL: Wrong address on slave, got %h", s1_awaddr);
 
-        // Deassert M0, M1 should now get served
         m0_awvalid = 0;
         m0_wvalid = 0;
         #10;
@@ -244,9 +258,8 @@ module axi_lite_interconnect_v1_1_tb;
         m1_rready = 0;
         #20;
 
-        // Test 4: Verify all slave bready/rready are routed
+        // Test 4: Verify slave bready/rready are driven by DUT
         $display("--- Test 4: Ready signal routing ---");
-        // All slaves should have bready/rready driven
         if (s0_bready && s1_bready && s2_bready && s3_bready && s4_bready)
             $display("PASS: All bready routed");
         else
@@ -256,8 +269,5 @@ module axi_lite_interconnect_v1_1_tb;
         #50;
         $finish;
     end
-
-    // Monitor bready/rready in TB (they're driven in DUT always block)
-    // We don't override them here
 
 endmodule

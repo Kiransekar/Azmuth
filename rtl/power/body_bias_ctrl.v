@@ -74,6 +74,7 @@ module body_bias_ctrl (
                         bias_code_reg <= csr_wr_data[7:0];
                         cal_en_reg <= csr_wr_data[8];
                     end
+                    default: ;
                 endcase
             end
 
@@ -102,7 +103,7 @@ module body_bias_ctrl (
 
                 CAL_MEASURE: begin
                     if (measure_en) begin
-                        current_leakage <= leakage_counter;
+                        current_leakage <= {31'h0, leakage_counter};
                         measurement_timer <= measurement_timer + 1;
 
                         // Update minimum if we found a better bias point
@@ -180,7 +181,7 @@ module body_bias_ctrl (
     // CSR read logic
     always @(*) begin
         case (csr_addr)
-            12'h7C9: csr_rd_data = {23'h0, leakage_ready_reg, cal_en_reg, bias_code_reg};
+            12'h7C9: csr_rd_data = {22'h0, leakage_ready_reg, cal_en_reg, bias_code_reg};
             default: csr_rd_data = 32'h0;
         endcase
     end

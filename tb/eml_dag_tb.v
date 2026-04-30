@@ -1,5 +1,6 @@
 // tb/eml_dag_tb.v
 // Testbench for EML DAG cache with compression and CSE verification
+// Verilog 2001 compliant
 
 `timescale 1ns/1ps
 
@@ -28,6 +29,15 @@ module eml_dag_tb;
     wire subexpr_cached;
     wire [31:0] subexpr_result;
 
+    // Test variables (module-level for Verilog 2001)
+    integer i, j;
+    reg [31:0] test_hashes [0:9];
+    reg [31:0] test_results [0:9];
+    integer hit_count, miss_count, total_ops;
+    integer hit_rate_pct;
+    reg [31:0] full_hash;
+    reg [7:0]  compressed;
+
     // Instantiate the module
     eml_dag_cache uut (
         .clk(clk),
@@ -51,16 +61,10 @@ module eml_dag_tb;
     // Clock generation
     initial begin
         clk = 0;
-        forever #5 clk = ~clk;  // 10ns period = 100MHz
+        forever #5 clk = ~clk;
     end
 
     // Test stimulus
-    integer i, j;
-    reg [31:0] test_hashes [0:9];
-    reg [31:0] test_results [0:9];
-    integer hit_count, miss_count, total_ops;
-    real hit_rate;
-
     initial begin
         $display("Starting EML DAG Cache Testbench...");
 
@@ -74,6 +78,9 @@ module eml_dag_tb;
         expr_compute_done = 0;
         subexpr_hash = 0;
         subexpr_valid = 0;
+        hit_count = 0;
+        miss_count = 0;
+        total_ops = 0;
 
         #20 rst = 0;
         #10;
@@ -87,20 +94,15 @@ module eml_dag_tb;
         // Generate 10 random EML trees with some repetition for CSE testing
         $display("Test 2: Feeding 10 random EML trees with repetitions");
 
-        // Define test data with some repeated expressions for CSE
         test_hashes[0] = 32'hA1B2C3D4;  test_results[0] = 32'hDEADBEEF;
         test_hashes[1] = 32'h55AA55AA;  test_results[1] = 32'h12345678;
-        test_hashes[2] = 32'hA1B2C3D4;  // Same as 0 - should hit
-        test_results[2] = 32'hDEADBEEF;
+        test_hashes[2] = 32'hA1B2C3D4;  test_results[2] = 32'hDEADBEEF;
         test_hashes[3] = 32'h11223344;  test_results[3] = 32'hCAFEBABE;
-        test_hashes[4] = 32'h55AA55AA;  // Same as 1 - should hit
-        test_results[4] = 32'h12345678;
+        test_hashes[4] = 32'h55AA55AA;  test_results[4] = 32'h12345678;
         test_hashes[5] = 32'hABCDEF00;  test_results[5] = 32'hFEEDFACE;
-        test_hashes[6] = 32'hA1B2C3D4;  // Same as 0 - should hit
-        test_results[6] = 32'hDEADBEEF;
+        test_hashes[6] = 32'hA1B2C3D4;  test_results[6] = 32'hDEADBEEF;
         test_hashes[7] = 32'h12345678;  test_results[7] = 32'h00FF00FF;
-        test_hashes[8] = 32'h55AA55AA;  // Same as 1 - should hit
-        test_results[8] = 32'h12345678;
+        test_hashes[8] = 32'h55AA55AA;  test_results[8] = 32'h12345678;
         test_hashes[9] = 32'hFEDCBA98;  test_results[9] = 32'h87654321;
 
         hit_count = 0;
@@ -109,7 +111,6 @@ module eml_dag_tb;
 
         // Feed the test expressions
         for (i = 0; i < 10; i = i + 1) begin
-            // Feed expression hash and result
             expr_hash_in = test_hashes[i];
             expr_result_in = test_results[i];
             expr_valid_in = 1;
@@ -123,7 +124,6 @@ module eml_dag_tb;
             if (cache_hit) begin
                 hit_count = hit_count + 1;
                 $display("  -> Cache HIT! Result: %08x", cached_result);
-                // Verify cached result matches expected
                 if (cached_result !== test_results[i]) begin
                     $display("ERROR: Cache hit result mismatch!");
                 end
@@ -161,29 +161,27 @@ module eml_dag_tb;
             #10;
         end
 
-        // Calculate and report hit rate
+        // Calculate and report hit rate using integer arithmetic
         if (total_ops > 0) begin
-            hit_rate = (real'(hit_count) / real'(total_ops)) * 100.0;
+            hit_rate_pct = (hit_count * 10000) / total_ops;
             $display("=== CACHE PERFORMANCE ===");
             $display("Total operations: %0d", total_ops);
             $display("Hits: %0d", hit_count);
             $display("Misses: %0d", miss_count);
-            $display("Hit Rate: %.2f%%", hit_rate);
+            $display("Hit Rate: %0d.%02d%%", hit_rate_pct / 100, hit_rate_pct % 100);
 
-            // Verify DAG reuse ≥2x requirement
-            if (hit_rate >= 20.0) begin  // 20% represents 2x reuse threshold
-                $display("✅ DAG reuse requirement (≥2x) MET: %.2f%% hit rate", hit_rate);
+            if (hit_rate_pct >= 2000) begin
+                $display("PASS: DAG reuse requirement (>=2x) MET: %0d.%02d%% hit rate", hit_rate_pct / 100, hit_rate_pct % 100);
             end else begin
-                $display("❌ DAG reuse requirement (≥2x) NOT MET: %.2f%% hit rate", hit_rate);
+                $display("WARN: DAG reuse requirement (>=2x) NOT MET: %0d.%02d%% hit rate", hit_rate_pct / 100, hit_rate_pct % 100);
             end
         end
 
         // Test cache compression functionality
         $display("Test 4: Testing hash compression");
         for (i = 0; i < 5; i = i + 1) begin
-            // Use the compress_hash function directly via a temporary module
-            reg [31:0] full_hash = {i+1, 28'hABCDEF};
-            reg [7:0] compressed = full_hash[7:0] ^ full_hash[15:8] ^ full_hash[23:16] ^ full_hash[31:24];
+            full_hash = ((i + 1) << 28) | 28'h0ABCDEF;
+            compressed = full_hash[7:0] ^ full_hash[15:8] ^ full_hash[23:16] ^ full_hash[31:24];
             $display("Original hash: %08x -> Compressed: %02x", full_hash, compressed);
         end
 
@@ -194,7 +192,6 @@ module eml_dag_tb;
 
 endmodule
 
-// Helper module to test hash compression
 module test_hash_compressor(
     input [31:0] hash_in,
     output [7:0] compressed_hash

@@ -126,6 +126,11 @@ module xcew_top_v1_1 (
     wire [15:0] dummy_araddr = 16'h0;
     wire        dummy_arvalid = 1'b0;
     wire        dummy_arready;
+    wire [1:0]  dummy_bresp;
+    wire        dummy_bvalid;
+    wire [31:0] dummy_rdata;
+    wire [1:0]  dummy_rresp;
+    wire        dummy_rvalid;
     wire        dummy_rready = 1'b1;
 
     // =========================================================================
@@ -376,7 +381,7 @@ module xcew_top_v1_1 (
         .interrupt(core_interrupt)
     );
 
-    assign core_instr = (core_pc[11:2] < 1024) ? instr_rom[core_pc[11:2]] : 32'h00000013;
+    assign core_instr = (core_pc[12:2] < 11'd1024) ? instr_rom[core_pc[11:2]] : 32'h00000013;
 
     // =========================================================================
     // AXI4-Lite Interconnect (v1.1)
@@ -394,19 +399,25 @@ module xcew_top_v1_1 (
         .m0_rvalid(m0_rvalid),  .m0_rready(m0_rready),
 
         // Master 1: EML (reserved)
-        .m1_awaddr(dummy_awaddr), .m1_awvalid(dummy_awvalid), .m1_bready(dummy_bready),
-        .m1_wdata(dummy_wdata),   .m1_wstrb(dummy_wstrb),    .m1_wvalid(dummy_wvalid),
-        .m1_araddr(dummy_araddr), .m1_arvalid(dummy_arvalid), .m1_rready(dummy_rready),
+        .m1_awaddr(dummy_awaddr), .m1_awvalid(dummy_awvalid), .m1_awready(dummy_awready),
+        .m1_wdata(dummy_wdata),   .m1_wstrb(dummy_wstrb),    .m1_wvalid(dummy_wvalid), .m1_wready(dummy_wready),
+        .m1_bresp(dummy_bresp),   .m1_bvalid(dummy_bvalid),  .m1_bready(dummy_bready),
+        .m1_araddr(dummy_araddr), .m1_arvalid(dummy_arvalid), .m1_arready(dummy_arready),
+        .m1_rdata(dummy_rdata),   .m1_rresp(dummy_rresp),    .m1_rvalid(dummy_rvalid), .m1_rready(dummy_rready),
 
         // Master 2: SNN (reserved)
-        .m2_awaddr(dummy_awaddr), .m2_awvalid(dummy_awvalid), .m2_bready(dummy_bready),
-        .m2_wdata(dummy_wdata),   .m2_wstrb(dummy_wstrb),    .m2_wvalid(dummy_wvalid),
-        .m2_araddr(dummy_araddr), .m2_arvalid(dummy_arvalid), .m2_rready(dummy_rready),
+        .m2_awaddr(dummy_awaddr), .m2_awvalid(dummy_awvalid), .m2_awready(dummy_awready),
+        .m2_wdata(dummy_wdata),   .m2_wstrb(dummy_wstrb),    .m2_wvalid(dummy_wvalid), .m2_wready(dummy_wready),
+        .m2_bresp(dummy_bresp),   .m2_bvalid(dummy_bvalid),  .m2_bready(dummy_bready),
+        .m2_araddr(dummy_araddr), .m2_arvalid(dummy_arvalid), .m2_arready(dummy_arready),
+        .m2_rdata(dummy_rdata),   .m2_rresp(dummy_rresp),    .m2_rvalid(dummy_rvalid), .m2_rready(dummy_rready),
 
         // Master 3: NVM (reserved)
-        .m3_awaddr(dummy_awaddr), .m3_awvalid(dummy_awvalid), .m3_bready(dummy_bready),
-        .m3_wdata(dummy_wdata),   .m3_wstrb(dummy_wstrb),    .m3_wvalid(dummy_wvalid),
-        .m3_araddr(dummy_araddr), .m3_arvalid(dummy_arvalid), .m3_rready(dummy_rready),
+        .m3_awaddr(dummy_awaddr), .m3_awvalid(dummy_awvalid), .m3_awready(dummy_awready),
+        .m3_wdata(dummy_wdata),   .m3_wstrb(dummy_wstrb),    .m3_wvalid(dummy_wvalid), .m3_wready(dummy_wready),
+        .m3_bresp(dummy_bresp),   .m3_bvalid(dummy_bvalid),  .m3_bready(dummy_bready),
+        .m3_araddr(dummy_araddr), .m3_arvalid(dummy_arvalid), .m3_arready(dummy_arready),
+        .m3_rdata(dummy_rdata),   .m3_rresp(dummy_rresp),    .m3_rvalid(dummy_rvalid), .m3_rready(dummy_rready),
 
         // Slave 0: Boot ROM
         .s0_awaddr(s0_awaddr), .s0_awvalid(s0_awvalid), .s0_awready(s0_awready),
@@ -452,7 +463,7 @@ module xcew_top_v1_1 (
     // =========================================================================
     // Boot ROM slave
     // =========================================================================
-    assign s0_rdata  = (s0_araddr[11:2] < 1024) ? instr_rom[s0_araddr[11:2]] : 32'h0;
+    assign s0_rdata  = (s0_araddr[12:2] < 11'd1024) ? instr_rom[s0_araddr[11:2]] : 32'h0;
     assign s0_rvalid = s0_arvalid;
     assign s0_rresp  = 2'b00;
     assign s0_bvalid = 1'b0;
@@ -485,8 +496,8 @@ module xcew_top_v1_1 (
     // EML Unit
     // =========================================================================
     assign eml_cfg_int = csr_xcew_cfg;
-    assign eml_rs1 = core_xcew_req ? core_rs1_data : 32'h0;
-    assign eml_rs2 = core_xcew_req ? core_rs2_data : 32'h0;
+    assign eml_rs1 = (core_xcew_req != 32'h0) ? core_rs1_data : 32'h0;
+    assign eml_rs2 = (core_xcew_req != 32'h0) ? core_rs2_data : 32'h0;
     assign eml_valid_int = core_xcew_valid;
 
     eml_unit eml_inst (
@@ -503,6 +514,12 @@ module xcew_top_v1_1 (
     );
 
     // EML DAG Cache
+    wire [7:0]  dag_cache_tag_wr, dag_cache_data_wr, dag_cache_lru_wr;
+    wire [7:0]  dag_cache_tag_rd, dag_cache_data_rd, dag_cache_lru_rd;
+    wire [31:0] dag_cache_data_out;
+    wire [7:0]  dag_cache_lru_out;
+    assign dag_cache_data_out = 32'h0;
+    assign dag_cache_lru_out = 8'h0;
     eml_dag_cache eml_dag_cache_inst (
         .clk(clk_eml_gated),
         .rst(rst),
@@ -519,7 +536,15 @@ module xcew_top_v1_1 (
         .subexpr_hash(eml_subexpr_hash),
         .subexpr_valid(eml_subexpr_valid),
         .subexpr_cached(eml_subexpr_cached),
-        .subexpr_result(eml_subexpr_result)
+        .subexpr_result(eml_subexpr_result),
+        .cache_tag_wr(dag_cache_tag_wr),
+        .cache_data_wr(dag_cache_data_wr),
+        .cache_lru_wr(dag_cache_lru_wr),
+        .cache_tag_rd(dag_cache_tag_rd),
+        .cache_data_rd(dag_cache_data_rd),
+        .cache_lru_rd(dag_cache_lru_rd),
+        .cache_data_out(dag_cache_data_out),
+        .cache_lru_out(dag_cache_lru_out)
     );
 
     // EML Constant-Time
@@ -582,7 +607,7 @@ module xcew_top_v1_1 (
     // SNN Tile
     // =========================================================================
     assign snn_classify_en_int = core_xcew_valid && (core_xcew_req[6:0] == 7'b1011011);
-    assign snn_spike_in_int    = {32'h0, core_rs1_data, core_rs2_data};
+    assign snn_spike_in_int    = {core_rs1_data, core_rs2_data};
     assign snn_weight_ptr_int  = core_xcew_req[31:16];
 
     snn_tile snn_inst (
@@ -788,6 +813,7 @@ module xcew_top_v1_1 (
     // =========================================================================
     assign o_debug_uart = 8'h00;
     assign o_debug_status = {
+        12'h0,
         pipeline_halt_int,
         watchdog_trip_int,
         ecc_error_int,

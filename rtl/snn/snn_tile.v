@@ -113,21 +113,21 @@ module snn_tile (
                     // Process each neuron in sequence
                     if (neuron_idx < NEURON_COUNT) begin
                         // LIF neuron update: v_mem <= v_mem + spike_input - leak_rate
-                        temp_input_val = i_spike_in[neuron_idx*8 +: 8];
+                        temp_input_val = i_spike_in[neuron_idx[2:0]*8 +: 8];
 
                         // Update membrane potential
-                        if (v_mem[neuron_idx] > 16'h7FFF - temp_input_val) begin
-                            v_mem[neuron_idx] <= 16'h7FFF;  // Clamp to prevent overflow
+                        if (v_mem[neuron_idx[2:0]] > 16'h7FFF - {{8{1'b0}}, temp_input_val}) begin
+                            v_mem[neuron_idx[2:0]] <= 16'h7FFF;  // Clamp to prevent overflow
                         end else begin
-                            v_mem[neuron_idx] <= v_mem[neuron_idx] + temp_input_val - {8'h00, leak_rate[neuron_idx]};
+                            v_mem[neuron_idx[2:0]] <= v_mem[neuron_idx[2:0]] + {{8{1'b0}}, temp_input_val} - {8'h00, leak_rate[neuron_idx[2:0]]};
                         end
 
                         // Check if threshold is crossed
-                        if (v_mem[neuron_idx] >= {8'h00, spike_thresh[neuron_idx]}) begin
-                            neuron_out[neuron_idx] <= 8'hFF;
-                            v_mem[neuron_idx] <= reset_val[neuron_idx];
+                        if (v_mem[neuron_idx[2:0]] >= {8'h00, spike_thresh[neuron_idx[2:0]]}) begin
+                            neuron_out[neuron_idx[2:0]] <= 8'hFF;
+                            v_mem[neuron_idx[2:0]] <= reset_val[neuron_idx[2:0]];
                         end else begin
-                            neuron_out[neuron_idx] <= 8'h00;
+                            neuron_out[neuron_idx[2:0]] <= 8'h00;
                         end
 
                         neuron_idx <= neuron_idx + 1;
