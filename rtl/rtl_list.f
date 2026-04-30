@@ -13,6 +13,7 @@ rtl/power/orchestrator.v
 rtl/security/fault_monitor.v
 rtl/snn/lif_ttfs_neuron_v1_1.v
 rtl/snn/snn_tile.v
+rtl/snn/snn_tile_256.v
 rtl/snn/stdp_engine.v
 rtl/snn/stdp_engine_v1_1.v
 rtl/soc/axi_lite_interconnect_v1_1.v

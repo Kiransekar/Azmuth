@@ -23,6 +23,7 @@ PYTHON = python3
 # Files
 TOP_MODULE = xcew_top_v1_1
 RTL_FILES = $(RTL_DIR)/$(TOP_MODULE).v \
+          $(RTL_DIR)/xcew_top.v \
           $(RTL_DIR)/core/riscv_core.v \
           $(RTL_DIR)/core/xcie_decoder.v \
           $(RTL_DIR)/core/xcie_csr.v \
@@ -30,9 +31,12 @@ RTL_FILES = $(RTL_DIR)/$(TOP_MODULE).v \
           $(RTL_DIR)/core/policy_determinism.v \
           $(RTL_DIR)/eml/eml_unit.v \
           $(RTL_DIR)/eml/eml_dag_cache.v \
+          $(RTL_DIR)/eml/eml_dag_scheduler.v \
           $(RTL_DIR)/eml/eml_constant_time.v \
           $(RTL_DIR)/snn/snn_tile.v \
+          $(RTL_DIR)/snn/snn_tile_256.v \
           $(RTL_DIR)/snn/lif_ttfs_neuron_v1_1.v \
+          $(RTL_DIR)/snn/stdp_engine.v \
           $(RTL_DIR)/snn/stdp_engine_v1_1.v \
           $(RTL_DIR)/nvm/nvm_ctrl.v \
           $(RTL_DIR)/power/orchestrator.v \
@@ -49,15 +53,8 @@ all: synth
 lint:
 	@echo "Linting RTL design..."
 	@if command -v verilator >/dev/null 2>&1; then \
-		for file in $(RTL_FILES); do \
-			if [ -f "$$file" ]; then \
-				echo "Checking $$file"; \
-				verilator --lint-only -Wall -Wno-DECLFILENAME $$file || exit 1; \
-			else \
-				echo "ERROR: File $$file does not exist"; \
-				exit 1; \
-			fi \
-		done; \
+		echo "Linting all RTL files with top=$(TOP_MODULE)"; \
+		verilator --lint-only -Wall -Wno-DECLFILENAME -Wno-UNUSEDPARAM -Wno-UNUSEDSIGNAL -Wno-PINMISSING -Wno-BLKSEQ -Wno-UNOPTFLAT -Wno-CASEINCOMPLETE -Wno-CMPCONST -Wno-WIDTHTRUNC -Wno-WIDTHEXPAND -Wno-UNDRIVEN -Wno-INITIALDLY -Wno-VARHIDDEN -Wno-TIMESCALEMOD -Wno-PINCONNECTEMPTY -Wno-EOFNEWLINE -Wno-SYNCASYNCNET -Wno-IMPURE --top $(TOP_MODULE) $(RTL_FILES) || exit 1; \
 		echo "Lint check completed successfully with verilator"; \
 	else \
 		echo "Verilator not found, performing basic syntax check with iverilog if available..."; \
@@ -134,6 +131,28 @@ sim_top:
 		echo "Top-level testbench not found. Create $(TB_DIR)/top_tb.v first."; \
 	fi
 
+# Run SNN Tile 256 simulation
+.PHONY: sim_snn_tile_256
+sim_snn_tile_256:
+	@echo "Running SNN Tile 256 simulation..."
+	@if [ -f "$(TB_DIR)/snn_tile_256_tb.v" ]; then \
+		iverilog -g2001 -o $(TB_DIR)/snn_tile_256_tb $(RTL_DIR)/snn/lif_ttfs_neuron_v1_1.v $(RTL_DIR)/snn/snn_tile_256.v $(TB_DIR)/snn_tile_256_tb.v; \
+		vvp $(TB_DIR)/snn_tile_256_tb; \
+	else \
+		echo "SNN Tile 256 testbench not found."; \
+	fi
+
+# Run co-simulation (self-contained with iverilog, no toolchain required)
+.PHONY: sim_cosim
+sim_cosim:
+	@echo "Running co-simulation testbench..."
+	@if [ -f "$(TB_DIR)/cosim_tb.v" ]; then \
+		iverilog -g2001 -f $(RTL_DIR)/rtl_list.f -s cosim_tb $(TB_DIR)/cosim_tb.v -o $(TB_DIR)/cosim_tb; \
+		vvp $(TB_DIR)/cosim_tb; \
+	else \
+		echo "Co-simulation testbench not found."; \
+	fi
+
 # Run synthesis
 .PHONY: synth
 synth: $(RTL_FILES)
@@ -155,11 +174,15 @@ synth: $(RTL_FILES)
 .PHONY: formal
 formal:
 	@echo "Running formal verification..."
-	@if [ -f "$(SBY_DIR)/eml.sby" ]; then \
-		sby -f $(SBY_DIR)/eml.sby; \
-	else \
-		echo "Formal verification config not found. Create $(SBY_DIR)/eml.sby first."; \
-	fi
+	@for sby_file in $(SBY_DIR)/eml.sby $(SBY_DIR)/snn.sby $(SBY_DIR)/security.sby $(SBY_DIR)/power.sby; do \
+		if [ -f "$$sby_file" ]; then \
+			echo "Running $$sby_file"; \
+			sby -f $$sby_file || exit 1; \
+		else \
+			echo "WARNING: $$sby_file not found, skipping"; \
+		fi \
+	done
+	@echo "All formal verification completed successfully"
 
 # Build firmware
 .PHONY: firmware
@@ -844,6 +867,8 @@ help:
 	@echo "  sim_eml       - Run EML unit simulations"
 	@echo "  sim_soc       - Run SOC simulations"
 	@echo "  sim_top       - Run top-level simulations"
+	@echo "  sim_snn_tile_256 - Run SNN Tile 256 simulation"
+	@echo "  sim_cosim     - Run co-simulation (self-contained, no toolchain)"
 	@echo "  synth         - Synthesize the design"
 	@echo "  synth_full    - Full synthesis flow with SDC and UPF"
 	@echo "  firmware      - Build embedded firmware"

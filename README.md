@@ -116,6 +116,7 @@ NeuroRiscV/
 │   │   └── eml_constant_time.v # Constant-time EML operations
 │   ├── snn/                    # Spiking Neural Network
 │   │   ├── snn_tile.v          # LIF neuron array (8 neurons)
+│   │   ├── snn_tile_256.v      # 256-neuron SNN classifier (v1.1)
 │   │   ├── lif_ttfs_neuron_v1_1.v # TTFS neuron + array wrapper
 │   │   ├── stdp_engine_v1_1.v # STDP learning engine + array
 │   │   └── stdp_engine.v      # STDP engine (v1.0, legacy)
@@ -173,6 +174,7 @@ NeuroRiscV/
 | Module | Lines | Description |
 |--------|-------|-------------|
 | `snn_tile` | ~200 | 8-neuron LIF array with classify FSM and confidence output |
+| `snn_tile_256` | ~242 | 256-neuron SNN classifier with sequential input loading, winner-take-all, spike outputs for STDP |
 | `lif_ttfs_neuron_v1_1` | ~143 | Single LIF neuron with TTFS encoding + refractory |
 | `lif_ttfs_neuron_v1_1_array` | ~83 | 4-neuron generate wrapper |
 | `stdp_engine_v1_1` | ~234 | STDP learning with 6 policies (Hebbian, Anti-Hebbian, LTP-only, LTD-only, Homeostatic) |
@@ -321,6 +323,8 @@ make sim_core                # Core unit testbench
 make sim_eml                 # EML unit testbench
 make sim_soc                 # SoC integration testbench
 make sim_top                 # Top-level testbench
+make sim_snn_tile_256        # SNN Tile 256 testbench
+make sim_cosim               # Co-simulation (self-contained, no toolchain)
 
 # Synthesis
 make synth                   # Quick Yosys synthesis (netlist only)
@@ -329,7 +333,7 @@ make signoff                  # Post-synthesis signoff
 make signoff_v1.1            # v1.1 unified signoff (STA + DFT + security)
 
 # Formal Verification
-make formal                  # SymbiYosys formal check
+make formal                  # SymbiYosys formal check (eml + snn + security + power)
 
 # Firmware
 make firmware                # Build firmware ELF + hex + bin
@@ -405,10 +409,10 @@ RTL Sources → synth_final.tcl → Netlist + Reports
 
 ## Verification Strategy
 
-1. **Unit tests** — Per-module testbenches (`tb/core_tb.v`, `tb/eml_tb.v`, etc.)
-2. **Integration tests** — SoC and top-level simulation
-3. **Formal verification** — SymbiYosys (`sby/eml.sby`) for critical paths
-4. **Co-simulation** — Firmware running on Verilator model with Python harness
+1. **Unit tests** — Per-module testbenches (`tb/core_tb.v`, `tb/eml_tb.v`, `tb/snn_tile_256_tb.v`, etc.) — **82 PASS** across 8 testbenches
+2. **Integration tests** — SoC, top-level, v1.1, and co-simulation — **8 PASS** across 4 testbenches
+3. **Formal verification** — SymbiYosys (`sby/eml.sby`, `sby/snn.sby`, `sby/security.sby`, `sby/power.sby`) — **18 properties** covering EML, SNN, security, and power
+4. **Co-simulation** — Self-contained iverilog testbench (`make sim_cosim`) with PC tracking, AXI monitoring, and Python golden model harness
 5. **Golden model** — Python reference for EML mathematical functions
 6. **Boundary tests** — Depth limits, overflow, NaN, watchdog timeout
 7. **CSR collision check** — `make check_csr_v1.1` verifies no address conflicts
@@ -457,7 +461,7 @@ All RTL files have been verified for full **Verilog 2001 compliance** with zero 
 |----------|--------|
 | Verilator lint (`--top xcew_top`) | **0 warnings, 0 errors** |
 | Verilator lint (`--top xcew_top_v1_1`) | **0 warnings, 0 errors** |
-| Iverilog simulation | **9/9 testbenches pass** |
+| Iverilog simulation | **12/12 testbenches pass** (82 unit + 8 integration PASS) |
 | SystemVerilog features | **None used** — pure Verilog 2001 |
 
 ### Resolved Warnings
@@ -503,6 +507,11 @@ Comprehensive architecture document available at `docs/ARCHITECTURE.md`:
 ### Remaining TODOs
 
 - EML unit: consider CORDIC iteration for further accuracy improvement beyond 4th-order minimax
+- SNN TTFS: energy reduction target (≥40%) not met in `snn_ttfs_tb` — needs TTFS optimization in neuron model
+- Formal verification: install SymbiYosys (`sby`) and run `make formal` to prove all 18 properties
+- SNN tile 256: add SBY with `NUM_NEURONS=4` already configured; extend to cover STDP weight-update properties
+- Integration: add firmware-driven test with actual RISC-V toolchain once available
+- PnR: run OpenROAD place-and-route flow for timing closure verification
 
 ---
 

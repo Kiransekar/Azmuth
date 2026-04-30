@@ -135,65 +135,42 @@ module lif_ttfs_neuron_v1_1 (
 
 endmodule
 
-// Neuron array wrapper (flat vector interface)
+// Neuron array wrapper — scalable flat-vector interface
+// Supports NUM_NEURONS instances of lif_ttfs_neuron_v1_1
+/* verilator lint_off DECLFILENAME */
 module lif_ttfs_neuron_v1_1_array #(
-    parameter NUM_NEURONS = 256,
-    parameter WEIGHT_BITS = 8,
-    parameter TIME_WINDOW_BITS = 10
+    parameter NUM_NEURONS = 256
 ) (
     input  wire                          clk,
     input  wire                          rst,
     input  wire                          ttfs_enable,
     input  wire [2:0]                    t_window,
     input  wire [2:0]                    refractory_cycles,
-    input  wire [31:0]                   input_current_0,
-    input  wire [31:0]                   input_current_1,
-    input  wire [31:0]                   input_current_2,
-    input  wire [31:0]                   input_current_3,
-    input  wire                          current_valid_0,
-    input  wire                          current_valid_1,
-    input  wire                          current_valid_2,
-    input  wire                          current_valid_3,
+    input  wire [32*NUM_NEURONS-1:0]     input_currents,   // 32 bits per neuron
+    input  wire [NUM_NEURONS-1:0]        current_valids,   // 1 bit per neuron
     input  wire [31:0]                   v_threshold,
     input  wire [31:0]                   v_rest,
-    output wire [31:0]                   membrane_potential_0,
-    output wire [31:0]                   membrane_potential_1,
-    output wire [31:0]                   membrane_potential_2,
-    output wire [31:0]                   membrane_potential_3,
-    output wire                          spike_out_0,
-    output wire                          spike_out_1,
-    output wire                          spike_out_2,
-    output wire                          spike_out_3,
-    output wire                          spike_valid_0,
-    output wire                          spike_valid_1,
-    output wire                          spike_valid_2,
-    output wire                          spike_valid_3
+    output wire [32*NUM_NEURONS-1:0]     membrane_potentials,
+    output wire [NUM_NEURONS-1:0]        spike_outs,
+    output wire [NUM_NEURONS-1:0]        spike_valids
 );
 
-    // Select neuron by ID for input routing
-    // For full array, the wrapper would need NUM_NEURONS-wide vectors
-    // This 4-neuron example demonstrates the pattern
-
-    wire spike_internal [0:3];
-    wire valid_internal [0:3];
-    wire [31:0] vmem_internal [0:3];
+    // Internal arrays (unpacked — valid in Verilog-2001 for internal use)
+    wire spike_internal [0:NUM_NEURONS-1];
+    wire valid_internal [0:NUM_NEURONS-1];
+    wire [31:0] vmem_internal [0:NUM_NEURONS-1];
 
     genvar gi;
     generate
-        for (gi = 0; gi < 4; gi = gi + 1) begin : neuron_gen
+        for (gi = 0; gi < NUM_NEURONS; gi = gi + 1) begin : neuron_gen
             lif_ttfs_neuron_v1_1 neuron_inst (
                 .clk(clk),
                 .rst(rst),
                 .ttfs_enable(ttfs_enable),
                 .t_window(t_window),
                 .refractory_cycles(refractory_cycles),
-                .input_current(input_current_0 + (gi === 0 ? 32'h0 :
-                                  gi === 1 ? 32'h1 :
-                                  gi === 2 ? 32'h2 : 32'h3)),
-                .current_valid(current_valid_0 & (gi === 0) |
-                              current_valid_1 & (gi === 1) |
-                              current_valid_2 & (gi === 2) |
-                              current_valid_3 & (gi === 3)),
+                .input_current(input_currents[gi*32 +: 32]),
+                .current_valid(current_valids[gi]),
                 .spike_out(spike_internal[gi]),
                 .membrane_potential(vmem_internal[gi]),
                 .spike_valid(valid_internal[gi]),
@@ -203,18 +180,15 @@ module lif_ttfs_neuron_v1_1_array #(
         end
     endgenerate
 
-    // Output assignments
-    assign membrane_potential_0 = vmem_internal[0];
-    assign membrane_potential_1 = vmem_internal[1];
-    assign membrane_potential_2 = vmem_internal[2];
-    assign membrane_potential_3 = vmem_internal[3];
-    assign spike_out_0 = spike_internal[0];
-    assign spike_out_1 = spike_internal[1];
-    assign spike_out_2 = spike_internal[2];
-    assign spike_out_3 = spike_internal[3];
-    assign spike_valid_0 = valid_internal[0];
-    assign spike_valid_1 = valid_internal[1];
-    assign spike_valid_2 = valid_internal[2];
-    assign spike_valid_3 = valid_internal[3];
+    // Flatten internal unpacked arrays back to output vectors
+    // Verilog-2001: generate loop for continuous assignments
+    genvar gj;
+    generate
+        for (gj = 0; gj < NUM_NEURONS; gj = gj + 1) begin : output_assign
+            assign membrane_potentials[gj*32 +: 32] = vmem_internal[gj];
+            assign spike_outs[gj] = spike_internal[gj];
+            assign spike_valids[gj] = valid_internal[gj];
+        end
+    endgenerate
 
 endmodule

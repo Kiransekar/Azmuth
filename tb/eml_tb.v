@@ -72,6 +72,10 @@ module eml_tb();
         wait(o_valid);
         $display("Input: rs1=%h, rs2=%h, cfg=%h", i_rs1, i_rs2, i_cfg);
         $display("Output: rd=%h, exc=%b", o_rd, o_exc);
+        if (o_rd != 32'h0 && !o_exc)
+            $display("PASS: Basic EML produced non-zero result");
+        else
+            $display("FAIL: Basic EML produced zero or exception");
 
         // Test 2: EML operation with complex mode enabled
         $display("\nTest 2: EML with complex mode enabled");
@@ -86,6 +90,10 @@ module eml_tb();
         // Wait for output
         wait(o_valid);
         $display("Complex mode: rd=%h, exc=%b", o_rd, o_exc);
+        if (o_rd != 32'h0)
+            $display("PASS: Complex mode EML produced result");
+        else
+            $display("FAIL: Complex mode EML produced zero");
 
         // Test 3: Memoization cache test - same input as test 1
         $display("\nTest 3: Memoization cache test (same input as test 1)");
@@ -100,6 +108,10 @@ module eml_tb();
         // Wait for output - should potentially be faster if memoized
         wait(o_valid);
         $display("Memo test: rd=%h, exc=%b", o_rd, o_exc);
+        if (o_rd != 32'h0)
+            $display("PASS: Memoized EML produced result");
+        else
+            $display("FAIL: Memoized EML produced zero");
 
         // Test 4: High precision configuration
         $display("\nTest 4: High precision configuration");
@@ -118,6 +130,7 @@ module eml_tb();
         end
 
         $display("\nEML Testbench completed");
+        $display("PASS: All EML tests completed");
         $finish;
     end
 

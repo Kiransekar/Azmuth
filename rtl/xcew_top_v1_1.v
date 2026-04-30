@@ -250,22 +250,25 @@ module xcew_top_v1_1 (
     // =========================================================================
     // SNN unit signals
     // =========================================================================
-    wire [63:0] snn_spike_in_int;
-    wire [15:0] snn_weight_ptr_int;
     wire        snn_classify_en_int;
     wire [7:0]  snn_class_int;
-    wire [7:0]  snn_conf_int;
+    wire [15:0] snn_conf_int;
     wire        snn_done_int;
+    wire        snn_ready_int;
 
-    // SNN TTFS
+    // SNN TTFS config
     wire        snn_ttfs_enable_int;
     wire [2:0]  snn_t_window_int;
     wire [2:0]  snn_refractory_cycles_int;
+
+    // SNN 256-neuron input loading
     wire [31:0] snn_input_current_int;
+    wire [7:0]  snn_neuron_idx_int;
     wire        snn_current_valid_int;
-    wire        snn_spike_out_int;
-    wire        snn_spike_valid_int;
-    wire [31:0] snn_membrane_potential_int;
+
+    // SNN spike outputs (from tile_256 for STDP)
+    wire [255:0] snn_spike_outs_vec;
+    wire [255:0] snn_spike_valids_vec;
 
     // SNN STDP
     wire [3:0]  snn_stdp_policy_int;
@@ -604,44 +607,45 @@ module xcew_top_v1_1 (
     assign s2_arready = 1'b1;
 
     // =========================================================================
-    // SNN Tile
+    // SNN Tile (256 neurons)
     // =========================================================================
     assign snn_classify_en_int = core_xcew_valid && (core_xcew_req[6:0] == 7'b1011011);
-    assign snn_spike_in_int    = {core_rs1_data, core_rs2_data};
-    assign snn_weight_ptr_int  = core_xcew_req[31:16];
-
-    snn_tile snn_inst (
-        .i_clk_snn(clk_snn_gated),
-        .i_rst(rst),
-        .i_spike_in(snn_spike_in_int),
-        .i_weight_ptr(snn_weight_ptr_int),
-        .i_classify_en(snn_classify_en_int),
-        .o_class(snn_class_int),
-        .o_conf(snn_conf_int),
-        .o_done(snn_done_int)
-    );
-
-    // SNN TTFS Neuron (v1.1)
     assign snn_ttfs_enable_int = v1_1_en & csr_snn_ctrl_ext[7];
     assign snn_t_window_int = csr_snn_ctrl_ext[10:8];
     assign snn_refractory_cycles_int = csr_snn_ctrl_ext[14:12];
 
-    lif_ttfs_neuron_v1_1 snn_ttfs_inst (
-        .clk(clk_snn_gated),
-        .rst(rst),
-        .ttfs_enable(snn_ttfs_enable_int),
-        .t_window(snn_t_window_int),
-        .refractory_cycles(snn_refractory_cycles_int),
-        .input_current(snn_input_current_int),
-        .current_valid(snn_current_valid_int),
-        .spike_out(snn_spike_out_int),
-        .spike_valid(snn_spike_valid_int),
-        .membrane_potential(snn_membrane_potential_int),
-        .v_threshold(32'h40000000),
-        .v_rest(32'h0)
+    // Sequential input loading: rs1=data, rs2[7:0]=neuron index
+    // current_valid is driven by core's xcew_valid when SNN opcode is active
+    assign snn_input_current_int = core_rs1_data;
+    assign snn_neuron_idx_int    = core_rs2_data[7:0];
+    assign snn_current_valid_int = core_xcew_valid && (core_xcew_req[6:0] == 7'b1111011);
+
+    snn_tile_256 #(.NUM_NEURONS(256)) snn_inst (
+        .i_clk_snn(clk_snn_gated),
+        .i_rst(rst),
+        .i_classify_en(snn_classify_en_int),
+        .i_ttfs_enable(snn_ttfs_enable_int),
+        .i_t_window(snn_t_window_int),
+        .i_refractory_cycles(snn_refractory_cycles_int),
+        .i_v_threshold(32'h40000000),
+        .i_v_rest(32'h0),
+        .i_input_current(snn_input_current_int),
+        .i_neuron_idx(snn_neuron_idx_int),
+        .i_current_valid(snn_current_valid_int),
+        .o_class(snn_class_int),
+        .o_conf(snn_conf_int),
+        .o_done(snn_done_int),
+        .o_ready(snn_ready_int),
+        .o_spike_outs(snn_spike_outs_vec),
+        .o_spike_valids(snn_spike_valids_vec)
     );
 
     // SNN STDP Engine (v1.1)
+    // Wire spike outputs: neuron 0 as pre-synaptic, neuron 1 as post-synaptic
+    assign snn_pre_spike_int  = snn_spike_outs_vec[0];
+    assign snn_post_spike_int = snn_spike_outs_vec[1];
+    assign snn_pre_spike_time_int  = 32'd0;  // Placeholder: TTFS timing not yet wired
+    assign snn_post_spike_time_int = 32'd0;
     assign snn_stdp_policy_int = csr_snn_ctrl_ext[19:16];
     assign snn_stdp_enable_int = v1_1_en & csr_snn_ctrl_ext[20];
     assign snn_learning_enable_int = v1_1_en & csr_snn_ctrl_ext[21];

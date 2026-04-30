@@ -1,0 +1,38 @@
+# sby/security.sby
+# SymbiYosys configuration for Security modules formal verification
+# Covers: fault_monitor and policy_determinism
+
+[options]
+mode bmc
+depth 25
+jobs 4
+
+[engines]
+smtbmc
+
+[script]
+read_verilog -sv ../rtl/security/fault_monitor.v
+read_verilog -sv ../rtl/core/policy_determinism.v
+prep -top fault_monitor
+
+[files]
+../rtl/security/fault_monitor.v
+../rtl/core/policy_determinism.v
+
+[property]
+# === fault_monitor properties ===
+
+# Property: fault_latch, once set, persists until explicit clear via CSR
+assert property (@(posedge clk) disable iff (rst) (fault_monitor.fault_latch && !fault_clr) |=> fault_monitor.fault_latch);
+
+# Property: pipeline_halt implies fault_latch is set
+assert property (@(posedge clk) disable iff (rst) pipeline_halt |-> fault_monitor.fault_latch);
+
+# Property: irq_fault implies fault_latch is set (IRQ only when latched)
+assert property (@(posedge clk) disable iff (rst) irq_fault |-> fault_monitor.fault_latch);
+
+# Property: error_code is zero after reset
+assert property (@(posedge clk) disable iff (rst) $fell(rst) |=> error_code == 4'h0);
+
+# Property: CSR write to 0x7CC with bit[31] clears fault_latch
+assert property (@(posedge clk) disable iff (rst) (csr_wr_en && csr_addr == 12'h7CC && csr_wr_data[31]) |=> !fault_monitor.fault_latch);

@@ -217,6 +217,17 @@ module core_tb();
         $display("Interrupt status: %b", interrupt);
         $display("Final PC: %h", pc);
 
+        // Verify core executed instructions and reached the loop
+        if (pc >= 32'h00000024)
+            $display("PASS: Core reached JAL loop at PC=%h", pc);
+        else
+            $display("FAIL: Core stuck at PC=%h (expected >= 0x24)", pc);
+
+        if (!exception)
+            $display("PASS: No unexpected exceptions");
+        else
+            $display("FAIL: Exception asserted unexpectedly");
+
         // Verify Xcew interface behavior
         if (o_xcew_req != 32'h0) begin
             $display("Last Xcew request: %h", o_xcew_req);

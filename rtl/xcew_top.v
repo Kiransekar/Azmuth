@@ -443,16 +443,25 @@ module xcew_top (
     assign eml_csr_wready = 1'b1;
     assign eml_csr_arready = 1'b1;
 
-    // SNN Tile with TTFS and STDP integration (v1.1)
-    snn_tile snn_inst (
+    // SNN Tile (256 neurons)
+    snn_tile_256 #(.NUM_NEURONS(256)) snn_inst (
         .i_clk_snn(clk_250mhz),
         .i_rst(i_rst),
-        .i_spike_in(64'h0),
-        .i_weight_ptr(16'h0),
         .i_classify_en(1'b0),
+        .i_ttfs_enable(1'b0),
+        .i_t_window(3'b011),
+        .i_refractory_cycles(3'b001),
+        .i_v_threshold(32'h40000000),
+        .i_v_rest(32'h0),
+        .i_input_current(32'h0),
+        .i_neuron_idx(8'h0),
+        .i_current_valid(1'b0),
         .o_class(),
         .o_conf(),
-        .o_done()
+        .o_done(),
+        .o_ready(),
+        .o_spike_outs(),
+        .o_spike_valids()
     );
 
     // SNN TTFS Neuron (v1.1)

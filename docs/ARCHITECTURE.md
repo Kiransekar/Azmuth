@@ -353,6 +353,51 @@ ln(x) = log₂(x) * ln(2)
 
 **Purpose**: Implements an **8-neuron Leaky Integrate-and-Fire (LIF)** array with classification FSM. The SNN tile receives spike-encoded inputs, integrates them over time, and produces a classification result with confidence.
 
+### 6.1b Module: `snn_tile_256`
+
+**File**: `rtl/snn/snn_tile_256.v` (~242 lines)
+
+**Purpose**: A **256-neuron SNN classifier** that wraps `lif_ttfs_neuron_v1_1_array` and implements winner-take-all classification. This is the v1.1 upgrade from the 8-neuron `snn_tile`, providing significantly more classification capacity for real-world edge AI workloads.
+
+**Key Differences from `snn_tile`**:
+- **256 neurons** (parameterized via `NUM_NEURONS`) vs. 8
+- **Sequential input loading** via 32-bit data bus + neuron index (`i_input_current`, `i_neuron_idx`, `i_current_valid`) instead of parallel spike buffer
+- **Spike output ports** (`o_spike_outs[255:0]`, `o_spike_valids[255:0]`) for STDP integration
+- **5-state FSM**: IDLE → LOAD → INTEGRATE → SCAN → DONE_STATE
+- **Winner-take-all scan**: iterates all neurons to find max spike count
+- **16-bit confidence** output (spike count of winner)
+
+**FSM States**:
+- **IDLE**: Assert `o_ready`; wait for `i_classify_en`
+- **LOAD**: Sequentially load input currents via `i_input_current`/`i_neuron_idx`/`i_current_valid`
+- **INTEGRATE**: Run TTFS neuron array for `window_cycles` cycles
+- **SCAN**: Iterate neurons to find winner (max spike count)
+- **DONE_STATE**: Assert `o_done`, output `o_class` and `o_conf`
+
+**Interface Signals**:
+
+```verilog
+input  wire        i_clk_snn
+input  wire        i_rst
+input  wire        i_classify_en
+input  wire        i_ttfs_enable
+input  wire [2:0]  i_t_window
+input  wire [2:0]  i_refractory_cycles
+input  wire [31:0] i_v_threshold
+input  wire [31:0] i_v_rest
+input  wire [31:0] i_input_current   // Sequential data bus
+input  wire [7:0]  i_neuron_idx      // Neuron index (0-255)
+input  wire        i_current_valid   // Data valid strobe
+output reg  [7:0]  o_class           // Winning neuron index
+output reg  [15:0] o_conf            // Confidence (spike count)
+output reg         o_done
+output wire        o_ready
+output wire [NUM_NEURONS-1:0] o_spike_outs    // Spike outputs for STDP
+output wire [NUM_NEURONS-1:0] o_spike_valids  // Spike valids for STDP
+```
+
+**Significance**: The 256-neuron tile enables real classification tasks (e.g., 10-class image recognition with redundant encoding). The sequential input loading interface allows the RISC-V core to stream input currents via custom instructions without requiring a wide parallel bus. Spike outputs connect directly to the STDP engine for on-device learning.
+
 **Neuron Model (LIF)**:
 ```
 v_mem[neuron] = v_mem[neuron] + spike_input - leak_rate
@@ -678,12 +723,28 @@ All Xcew instructions use the RISC-V **custom-0** opcode space (`custom0` / `cus
 | `tb/core_tb.v` | `riscv_core` + decoder + CSR + ctrl | Full program execution | **PASS** |
 | `tb/eml_math_tb.v` | `eml_unit` | exp/ln/sub edge cases | **PASS** |
 | `tb/snn_v1_1_tb.v` | `snn_tile` + `lif_ttfs_neuron_v1_1` + `stdp_engine_v1_1` | Classification, weight update | **PASS** |
+| `tb/snn_tile_256_tb.v` | `snn_tile_256` (8-neuron config) | Sequential loading, winner-take-all, confidence | **PASS** |
+| `tb/soc_tb.v` | `xcew_top` (full SoC) | Core PC reset, bus activity | **PASS** |
+| `tb/xcew_top_v1_1_tb.v` | `xcew_top_v1_1` | Reset, CSR read, IRQ stability | **PASS** |
+| `tb/top_tb.v` | `xcew_top` | Reset, IRQ, debug UART | **PASS** |
+| `tb/cosim_tb.v` | `xcew_top` (co-sim) | PC tracking, AXI activity, IRQ | **PASS** |
 
 ### 14.2 Linting
 
-- **Verilator** (`--top xcew_top` or `--top xcew_top_v1_1`): **0 warnings, 0 errors**
-- **Iverilog**: All testbenches compile and simulate without errors
+- **Verilator** (`--top xcew_top_v1_1`, all RTL files together): **0 errors, clean exit**
+- **Iverilog**: All 12 testbenches compile and simulate without errors
 - **Verilog 2001**: Fully compliant, no SystemVerilog features
+
+### 14.3 Formal Verification
+
+| SBY File | Module | Properties | Depth | Mode |
+|---------|--------|------------|-------|------|
+| `sby/eml.sby` | `eml_unit` | Depth counter bound, overflow flag, cache hit timing | 20 | BMC |
+| `sby/snn.sby` | `snn_tile_256` (NUM_NEURONS=4) | FSM transitions, output range, counter bounds | 30 | BMC |
+| `sby/security.sby` | `fault_monitor` | Fault latch persistence, pipeline halt implies latch, CSR clear | 25 | BMC |
+| `sby/power.sby` | `orchestrator` | Sleep/state consistency, isolation implies sleep, wake transitions | 25 | BMC |
+
+**Total**: 18 formal properties across 4 modules. Run with `make formal` (requires SymbiYosys).
 
 ### 14.3 Synthesis Targets
 
@@ -713,6 +774,7 @@ All Xcew instructions use the RISC-V **custom-0** opcode space (`custom0` / `cus
 | `rtl/eml/eml_dag_scheduler.v` | `eml_dag_scheduler` | ~73 | Pending subexpression tracker |
 | `rtl/eml/eml_constant_time.v` | `eml_constant_time` | ~292 | Constant-time operation wrapper |
 | `rtl/snn/snn_tile.v` | `snn_tile` | ~194 | 8-neuron LIF classifier |
+| `rtl/snn/snn_tile_256.v` | `snn_tile_256` | ~242 | 256-neuron SNN classifier (v1.1) |
 | `rtl/snn/lif_ttfs_neuron_v1_1.v` | `lif_ttfs_neuron_v1_1` | ~221 | TTFS LIF neuron |
 | `rtl/snn/stdp_engine_v1_1.v` | `stdp_engine_v1_1` | ~234 | STDP learning engine |
 | `rtl/nvm/nvm_ctrl.v` | `nvm_ctrl` | ~2213 | ReRAM controller + ECC |
@@ -723,4 +785,4 @@ All Xcew instructions use the RISC-V **custom-0** opcode space (`custom0` / `cus
 
 ---
 
-*Document version: v1.1 — Verilog 2001 compliant, synthesizable, tapeout-ready.*
+*Document version: v1.1 — Verilog 2001 compliant, synthesizable, tapeout-ready. Updated with snn_tile_256 integration and expanded formal verification coverage.*

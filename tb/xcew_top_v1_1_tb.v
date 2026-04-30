@@ -73,6 +73,11 @@ module xcew_top_v1_1_tb;
         $display("IRQ status: EML=%b SNN=%b NVM=%b FAULT=%b",
                  o_irq_eml, o_irq_snn, o_irq_nvm, o_irq_fault);
 
+        if (o_irq_eml == 0 && o_irq_snn == 0 && o_irq_nvm == 0 && o_irq_fault == 0)
+            $display("PASS: No spurious interrupts after reset");
+        else
+            $display("FAIL: Unexpected IRQ asserted");
+
         $display("--- Xcew Top v1.1 TB complete ---");
         #50;
         $finish;

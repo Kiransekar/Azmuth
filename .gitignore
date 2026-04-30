@@ -5,6 +5,7 @@ sim_build/
 *.fst
 *.vpd
 *.wlf
+*.vvp
 
 # Synthesis outputs
 *.netlist.v
