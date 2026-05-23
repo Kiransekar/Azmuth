@@ -101,7 +101,8 @@ toolchain/
 **PASS:** Directory structure as above. README describes purpose of each subdirectory. No floating scripts at `toolchain/` root.
 **Owner:** Pair E
 
-### S0.2 [ ] HARD GATE — Pinned upstream versions
+### S0.2 [~] HARD GATE — Pinned upstream versions
+> _`toolchain/VERSIONS.md` records the working toolset (riscof 1.25.3, spike 1.1.1, riscv-arch-test `281d71e`, gcc-13, Verilator 5.047, etc.) and `toolchain/env.sh` puts it on PATH. NOT full PASS: exact-SHA pinning + Docker reproducibility (§S0.3) still TODO._
 
 **Action:** Every external dependency pinned by exact commit SHA, not tag or branch. Document in `toolchain/VERSIONS.md`:
 
