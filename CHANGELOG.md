@@ -13,6 +13,13 @@ implementing commit. Bug IDs `BUG-001`..`BUG-027` correspond to the
 ## [Unreleased]
 
 ### Added
+- **RISC-V compliance harness (audit §2.4):** `tb/riscof/azmuth_riscof_tb.v`
+  (unified-memory DUT harness with tohost-halt + signature dump),
+  `toolchain/riscof/azmuth/env/{link.ld,model_test.h}`, `toolchain/riscof/bin2hex.py`,
+  and `flow/compliance_archtest.sh` (differential runner: official arch-test →
+  Spike reference vs Azmuth DUT → signature diff). **`add-01` passes byte-identical
+  to Spike** (first official RISC-V arch-test on Azmuth). Core gains a parameterized
+  `RESET_PC` (default 0; 0x80000000 for arch-test) and a corrected `misa` (RV32I).
 - `docs/VERIFICATION_PLAN.md` (audit §2.1, draft) and `docs/CDC_ANALYSIS.md`
   (§3.1) — the latter finds the core↔SNN crossing is unsynchronized (DEV-011).
 - `docs/MICRO_ARCH_SPEC.md` (audit §1.1, draft) with a Deviations Register

@@ -7,7 +7,9 @@
 
 `timescale 1ns/1ps
 
-module riscv_core (
+module riscv_core #(
+    parameter [31:0] RESET_PC = 32'h00000000   // reset vector (0 default; 0x80000000 for RISCOF)
+) (
     input  wire        clk,
     input  wire        rst,
 
@@ -271,9 +273,9 @@ module riscv_core (
     // IF Stage
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            pc_reg <= 32'h00000000;
+            pc_reg <= RESET_PC;
             if_instr <= 32'h00000000;
-            if_pc <= 32'h00000000;
+            if_pc <= RESET_PC;
         end else if (!stall_if && !bubble_if) begin
             pc_reg <= next_pc;
             if_instr <= instr;
@@ -494,7 +496,7 @@ module riscv_core (
     always @(*) begin
         case (csr_a)
             CSR_MSTATUS:  csr_int_rdata = csr_mstatus;
-            CSR_MISA:     csr_int_rdata = 32'h40001100; // MXL=32, ext I+M
+            CSR_MISA:     csr_int_rdata = 32'h40000100; // MXL=32, ext I (M not implemented)
             CSR_MIE:      csr_int_rdata = csr_mie;
             CSR_MTVEC:    csr_int_rdata = csr_mtvec;
             CSR_MSCRATCH: csr_int_rdata = csr_mscratch;
