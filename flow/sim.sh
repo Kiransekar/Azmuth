@@ -14,4 +14,4 @@ cd "$(dirname "$0")/.."
 if [ "$#" -ge 1 ]; then
   exec make "sim_$1"
 fi
-make sim_core sim_eml sim_soc sim_top sim_snn_tile_256 sim_cosim
+make sim_core sim_decoder sim_trap sim_irq sim_eml sim_soc sim_top sim_snn_tile_256 sim_cosim

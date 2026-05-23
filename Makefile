@@ -98,6 +98,21 @@ sim_core:
 		echo "Core testbench not found. Create $(TB_DIR)/core_tb.v first."; \
 	fi
 
+# Xcew decoder unit test
+.PHONY: sim_decoder
+sim_decoder:
+	@iverilog -g2001 -o $(TB_DIR)/xcie_decoder_tb $(TB_DIR)/xcie_decoder_tb.v $(RTL_DIR)/core/xcie_decoder.v && vvp $(TB_DIR)/xcie_decoder_tb
+
+# M-mode exception / CSR trap test
+.PHONY: sim_trap
+sim_trap:
+	@iverilog -g2001 -o $(TB_DIR)/trap_tb $(TB_DIR)/trap_tb.v $(RTL_DIR)/core/riscv_core.v && vvp $(TB_DIR)/trap_tb
+
+# M-mode external-interrupt trap test
+.PHONY: sim_irq
+sim_irq:
+	@iverilog -g2001 -o $(TB_DIR)/irq_tb $(TB_DIR)/irq_tb.v $(RTL_DIR)/core/riscv_core.v && vvp $(TB_DIR)/irq_tb
+
 # Run EML simulations
 .PHONY: sim_eml
 sim_eml:

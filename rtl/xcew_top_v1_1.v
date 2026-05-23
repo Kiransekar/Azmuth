@@ -374,6 +374,10 @@ module xcew_top_v1_1 (
         .csr_wr_en(core_csr_wr_en),
         .csr_wr_data(core_csr_wr_data),
         .csr_rd_data(core_csr_rd_data),
+        // Machine interrupts: external = aggregate of live IRQ sources
+        .i_meip(o_irq_fault | timeout_irq_int),
+        .i_mtip(1'b0),
+        .i_msip(1'b0),
         .o_xcew_req(core_xcew_req),
         .o_xcew_valid(core_xcew_valid),
         .i_xcew_ready(core_xcew_ready),

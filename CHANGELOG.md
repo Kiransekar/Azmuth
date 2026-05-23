@@ -44,6 +44,15 @@ implementing commit. Bug IDs `BUG-001`..`BUG-027` correspond to the
   declared proprietary license.
 
 ### Fixed
+- DEV-005/DEV-009/DEV-012 (DECISION-009): implemented M-mode trap support in
+  `rtl/core/riscv_core.v` — Zicsr CSRs (mstatus/mie/mip/mtvec/mepc/mcause/mtval/
+  mscratch + misa/mhartid), exception detection (illegal/ECALL/EBREAK/misalign),
+  machine-interrupt taking (new `i_meip/i_mtip/i_msip` ports, wired in both tops),
+  and `mret`; trap-taking gated on `mtvec != 0`. Fixed the `if_pc` off-by-4
+  (corrects branch/jump targets and `mepc`) and added a 1-cycle wrong-path flush
+  on branch/jump/trap/mret. Tests `tb/trap_tb.v` (6/6), `tb/irq_tb.v` (5/5);
+  new make targets `sim_trap`/`sim_irq`/`sim_decoder`. No regression
+  (core/cosim/soc/top all pass).
 - DEV-001/DEV-002: reconciled the Xcew custom opcode map to the standard
   RISC-V custom-0..3 slots (DECISION-008); `rtl/core/xcie_decoder.v` aligned to
   the core and POL_UPD made reachable. Resolves the README "1 master" vs "4M×5S"

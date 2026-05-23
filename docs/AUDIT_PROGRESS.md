@@ -24,6 +24,25 @@ model**, `exception` is tied to 0, and 3 of 4 IRQs are tied off. These block
 RISCOF privilege/Zicsr (§2.4) and trap-handler firmware (§S2.5) and are recorded
 as DEV-005/008/009 rather than presented as working.
 
+## Slice 5 — trap / exception / interrupt RTL (DEV-005/008/009/012)
+
+The biggest technical gap closed: the core can now take exceptions and
+interrupts. Implemented in `rtl/core/riscv_core.v` (DECISION-009):
+
+| Capability | Status |
+|------------|--------|
+| M-mode CSRs (mstatus/mie/mip/mtvec/mepc/mcause/mtval/mscratch + misa/mhartid) | done |
+| Zicsr (CSRRW/S/C + immediate), internal vs external CSR split | done |
+| Exceptions: illegal / ECALL / EBREAK / load+store misalign, taken to mtvec | done — `tb/trap_tb.v` 6/6 |
+| Machine external interrupt taking (`i_meip`), gated by mstatus.MIE & mie | done — `tb/irq_tb.v` 5/5 |
+| `mret` return; mstatus MIE/MPIE/MPP save+restore | done |
+| Pipeline correctness: `if_pc` off-by-4 fix + 1-cycle wrong-path flush | done (also fixes branch/jump shadow) |
+
+Deviations: **DEV-005, DEV-009, DEV-012 CLOSED; DEV-007, DEV-008 PARTIAL.**
+**Zero regression** — core_tb, cosim (499 PC changes), soc, top all pass; lint clean.
+Gating trap-taking on `mtvec != 0` preserved pre-handler bring-up behavior.
+Remaining for full RISCOF: C-extension decode + broad arch-test coverage (§2.4).
+
 ## Slice 4 — verification plan + CDC analysis
 
 | Item | Status | What landed |

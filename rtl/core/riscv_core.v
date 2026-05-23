@@ -22,11 +22,16 @@ module riscv_core (
     output wire [3:0]  mem_wstrb,
     input  wire [31:0] mem_rdata,
 
-    // CSR interface
+    // CSR interface (external CSRs, e.g. Xcew 0x7Cx)
     output wire [11:0] csr_addr,
     output wire        csr_wr_en,
     output wire [31:0] csr_wr_data,
     input  wire [31:0] csr_rd_data,
+
+    // Machine interrupt inputs (M-mode): external / timer / software pending
+    input  wire        i_meip,
+    input  wire        i_mtip,
+    input  wire        i_msip,
 
     // Xcew custom interface
     output reg  [31:0] o_xcew_req,
@@ -243,7 +248,11 @@ module riscv_core (
     end
 
     always @(*) begin
-        if (pc_sel_jump) begin
+        if (trap_taken)
+            next_pc = csr_mtvec;          // direct-mode trap vector
+        else if (mret_taken)
+            next_pc = csr_mepc;           // return from trap
+        else if (pc_sel_jump) begin
             if (id_ex_instr[6:0] == OPCODE_BRANCH)
                 next_pc = branch_target;
             else
@@ -262,7 +271,8 @@ module riscv_core (
         end else if (!stall_if && !bubble_if) begin
             pc_reg <= next_pc;
             if_instr <= instr;
-            if_pc <= next_pc;
+            if_pc <= pc_reg;   // PC of the instruction just fetched (was next_pc:
+                               // an off-by-4 bug affecting branch/jump targets & mepc)
         end
     end
 
@@ -286,10 +296,11 @@ module riscv_core (
             end
 
         end else if (!stall_id_ex && !bubble_id_ex) begin
-            // Capture instruction from IF stage
+            // Capture instruction from IF stage (squash if it is the wrong-path
+            // instruction following a taken control transfer).
             id_ex_instr <= if_instr;
             id_ex_pc <= if_pc;
-            id_ex_valid <= 1'b1;
+            id_ex_valid <= !redirect;
 
             // Decode instruction fields
             id_opcode <= if_instr[6:0];
@@ -389,7 +400,7 @@ module riscv_core (
     wire is_load = id_ex_valid && (id_ex_instr[6:0] == OPCODE_LTYPE);
     wire [31:0] wb_data;
     assign wb_data = xcew_valid ? xcew_result :
-                     is_csr_read ? csr_rd_data :
+                     is_csr_read ? csr_read_value :
                      is_load ? mem_rdata :
                      ((id_ex_instr[6:0] == OPCODE_JAL) || (id_ex_instr[6:0] == OPCODE_JALR)) ? id_ex_pc + 32'h4 :
                      (id_ex_instr[6:0] == OPCODE_LUI) ? id_imm :
@@ -401,7 +412,7 @@ module riscv_core (
             rf_we <= 1'b0;
             rf_wdata <= 32'h0;
             rf_rd_addr <= 5'h0;
-        end else if (id_ex_valid) begin
+        end else if (id_ex_valid && !trap_taken) begin
             if (!id_ex_is_xcew) begin
                 if ((id_ex_instr[6:0] == OPCODE_RTYPE) || (id_ex_instr[6:0] == OPCODE_ITYPE) ||
                     (id_ex_instr[6:0] == OPCODE_LTYPE) || (id_ex_instr[6:0] == OPCODE_LUI) ||
@@ -445,18 +456,157 @@ module riscv_core (
     assign bubble_if = 1'b0;
     assign bubble_id_ex = stall_id_ex;
 
-    // CSR signals - driven by SYSTEM opcode instructions
-    wire is_csr_instr = id_ex_valid && (id_ex_instr[6:0] == OPCODE_SYSTEM) &&
-                        (id_ex_instr[14:12] != 3'b000);  // ECALL/EBREAK have funct3=0
-    assign csr_addr    = is_csr_instr ? id_ex_instr[31:20] : 12'h0;
-    assign csr_wr_en   = is_csr_instr && (id_ex_instr[14:12] == 3'b001);  // CSRRW
-    assign csr_wr_data = is_csr_instr ? rf_rs1_data : 32'h0;
+    // ================= Machine-mode trap / CSR (Zicsr, M-mode) =================
+    localparam CSR_MSTATUS = 12'h300, CSR_MISA  = 12'h301, CSR_MIE  = 12'h304,
+               CSR_MTVEC   = 12'h305, CSR_MSCRATCH = 12'h340, CSR_MEPC = 12'h341,
+               CSR_MCAUSE  = 12'h342, CSR_MTVAL = 12'h343, CSR_MIP  = 12'h344,
+               CSR_MHARTID = 12'hF14;
+
+    reg [31:0] csr_mstatus, csr_mie, csr_mtvec, csr_mscratch, csr_mepc, csr_mcause, csr_mtval;
+    wire mstatus_mie = csr_mstatus[3];
+    // mip is read-only here, reflecting the interrupt inputs (MEIP=11,MTIP=7,MSIP=3)
+    wire [31:0] csr_mip = (i_meip ? 32'h00000800 : 32'h0)
+                        | (i_mtip ? 32'h00000080 : 32'h0)
+                        | (i_msip ? 32'h00000008 : 32'h0);
+
+    wire [11:0] csr_a = id_ex_instr[31:20];
+    wire csr_is_machine =
+        (csr_a==CSR_MSTATUS)||(csr_a==CSR_MISA)||(csr_a==CSR_MIE)||(csr_a==CSR_MTVEC)||
+        (csr_a==CSR_MSCRATCH)||(csr_a==CSR_MEPC)||(csr_a==CSR_MCAUSE)||(csr_a==CSR_MTVAL)||
+        (csr_a==CSR_MIP)||(csr_a==CSR_MHARTID);
+
+    reg [31:0] csr_int_rdata;
+    always @(*) begin
+        case (csr_a)
+            CSR_MSTATUS:  csr_int_rdata = csr_mstatus;
+            CSR_MISA:     csr_int_rdata = 32'h40001100; // MXL=32, ext I+M
+            CSR_MIE:      csr_int_rdata = csr_mie;
+            CSR_MTVEC:    csr_int_rdata = csr_mtvec;
+            CSR_MSCRATCH: csr_int_rdata = csr_mscratch;
+            CSR_MEPC:     csr_int_rdata = csr_mepc;
+            CSR_MCAUSE:   csr_int_rdata = csr_mcause;
+            CSR_MTVAL:    csr_int_rdata = csr_mtval;
+            CSR_MIP:      csr_int_rdata = csr_mip;
+            default:      csr_int_rdata = 32'h0; // MHARTID and others read 0
+        endcase
+    end
+
+    // Zicsr operation (CSRRW/S/C and immediate variants)
+    wire is_system    = id_ex_valid && (id_ex_instr[6:0] == OPCODE_SYSTEM);
+    wire [2:0] sys_f3 = id_ex_instr[14:12];
+    wire is_csr_op    = is_system && (sys_f3 != 3'b000);
+    wire csr_use_imm  = sys_f3[2];
+    wire [31:0] csr_src = csr_use_imm ? {27'h0, id_ex_instr[19:15]} : rf_rs1_data;
+    wire [31:0] csr_old = csr_is_machine ? csr_int_rdata : csr_rd_data;
+    reg  [31:0] csr_new;
+    always @(*) begin
+        case (sys_f3[1:0])
+            2'b01:   csr_new = csr_src;            // CSRRW / CSRRWI
+            2'b10:   csr_new = csr_old | csr_src;  // CSRRS / CSRRSI
+            2'b11:   csr_new = csr_old & ~csr_src; // CSRRC / CSRRCI
+            default: csr_new = csr_old;
+        endcase
+    end
+    // RW always writes; RS/RC write only if the source field (rs1/uimm) != 0
+    wire csr_wr_happens = is_csr_op &&
+        ((sys_f3[1:0]==2'b01) || (id_ex_instr[19:15]!=5'h0));
+
+    // System / trap instruction decode
+    wire is_ecall  = is_system && (sys_f3==3'b000) && (csr_a==12'h000);
+    wire is_ebreak = is_system && (sys_f3==3'b000) && (csr_a==12'h001);
+    wire is_mret   = is_system && (sys_f3==3'b000) && (csr_a==12'h302);
+
+    wire [6:0] op7 = id_ex_instr[6:0];
+    wire legal_opcode =
+        (op7==OPCODE_RTYPE)||(op7==OPCODE_ITYPE)||(op7==OPCODE_LTYPE)||(op7==OPCODE_STYPE)||
+        (op7==OPCODE_BRANCH)||(op7==OPCODE_JAL)||(op7==OPCODE_JALR)||(op7==OPCODE_AUIPC)||
+        (op7==OPCODE_LUI)||(op7==OPCODE_SYSTEM)||(op7==7'b0001111)|| // FENCE
+        id_ex_is_xcew;
+
+    // Exception conditions
+    wire exc_illegal  = id_ex_valid && !legal_opcode;
+    wire exc_load_ma  = is_load &&
+        (((id_ex_instr[14:12]==3'b001)&&alu_result[0]) ||                 // LH
+         ((id_ex_instr[14:12]==3'b101)&&alu_result[0]) ||                 // LHU
+         ((id_ex_instr[14:12]==3'b010)&&(alu_result[1:0]!=2'b00)));        // LW
+    wire exc_store_ma = is_store &&
+        (((id_ex_instr[14:12]==3'b001)&&alu_result[0]) ||                 // SH
+         ((id_ex_instr[14:12]==3'b010)&&(alu_result[1:0]!=2'b00)));        // SW
+    wire any_exception = exc_illegal | is_ecall | is_ebreak | exc_load_ma | exc_store_ma;
+
+    // Interrupt pending (globally + individually enabled)
+    wire irq_pending = mstatus_mie &&
+        ((csr_mie[11]&i_meip) | (csr_mie[7]&i_mtip) | (csr_mie[3]&i_msip));
+
+    // A trap is taken only when a handler is installed (mtvec != 0). This keeps
+    // pre-handler bring-up behavior intact (existing tests never set mtvec) while
+    // giving full M-mode trap behavior once firmware programs mtvec. (DECISION-009)
+    wire trap_taken = id_ex_valid && (csr_mtvec != 32'h0) && !xcew_pending &&
+                      (any_exception | irq_pending);
+    wire mret_taken = is_mret && id_ex_valid && !trap_taken;
+
+    // A taken control transfer (branch/jump/trap/mret) redirects the PC; the
+    // sequentially-fetched instruction already in IF is wrong-path and must be
+    // squashed (1-cycle flush) so it does not execute.
+    wire redirect = pc_sel_jump | trap_taken | mret_taken;
+
+    // Trap cause / mtval (synchronous exceptions take priority over interrupts)
+    reg [31:0] trap_cause, trap_tval;
+    always @(*) begin
+        if (exc_illegal)             begin trap_cause=32'd2;        trap_tval=id_ex_instr; end
+        else if (is_ecall)           begin trap_cause=32'd11;       trap_tval=32'h0;       end
+        else if (is_ebreak)          begin trap_cause=32'd3;        trap_tval=id_ex_pc;    end
+        else if (exc_load_ma)        begin trap_cause=32'd4;        trap_tval=alu_result;  end
+        else if (exc_store_ma)       begin trap_cause=32'd6;        trap_tval=alu_result;  end
+        else if (csr_mie[11]&i_meip) begin trap_cause=32'h8000000B; trap_tval=32'h0;       end
+        else if (csr_mie[7]&i_mtip)  begin trap_cause=32'h80000007; trap_tval=32'h0;       end
+        else                         begin trap_cause=32'h80000003; trap_tval=32'h0;       end
+    end
+
+    // Machine CSR state update
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            csr_mstatus  <= 32'h0;  csr_mie    <= 32'h0;  csr_mtvec <= 32'h0;
+            csr_mscratch <= 32'h0;  csr_mepc   <= 32'h0;  csr_mcause<= 32'h0;
+            csr_mtval    <= 32'h0;
+        end else if (trap_taken) begin
+            csr_mepc           <= id_ex_pc;
+            csr_mcause         <= trap_cause;
+            csr_mtval          <= trap_tval;
+            csr_mstatus[7]     <= csr_mstatus[3]; // MPIE <= MIE
+            csr_mstatus[3]     <= 1'b0;           // MIE  <= 0
+            csr_mstatus[12:11] <= 2'b11;          // MPP  <= M
+        end else if (mret_taken) begin
+            csr_mstatus[3]     <= csr_mstatus[7]; // MIE  <= MPIE
+            csr_mstatus[7]     <= 1'b1;           // MPIE <= 1
+            csr_mstatus[12:11] <= 2'b11;
+        end else if (is_csr_op && csr_is_machine && csr_wr_happens) begin
+            case (csr_a)
+                CSR_MSTATUS:  csr_mstatus  <= csr_new;
+                CSR_MIE:      csr_mie      <= csr_new;
+                CSR_MTVEC:    csr_mtvec    <= csr_new;
+                CSR_MSCRATCH: csr_mscratch <= csr_new;
+                CSR_MEPC:     csr_mepc     <= csr_new;
+                CSR_MCAUSE:   csr_mcause   <= csr_new;
+                CSR_MTVAL:    csr_mtval    <= csr_new;
+                default: ; // MISA/MIP/MHARTID read-only
+            endcase
+        end
+    end
+
+    // External CSR bus (non-machine addresses, e.g. Xcew 0x7Cx)
+    assign csr_addr    = is_csr_op ? csr_a : 12'h0;
+    assign csr_wr_en   = csr_wr_happens && !csr_is_machine && !trap_taken;
+    assign csr_wr_data = csr_new;
+
+    // CSR read value for writeback: internal machine CSR or external bus
+    wire [31:0] csr_read_value = csr_is_machine ? csr_int_rdata : csr_rd_data;
 
     // Memory signals - driven by load/store instructions
     wire is_store = id_ex_valid && (id_ex_instr[6:0] == OPCODE_STYPE);
     assign mem_addr  = (is_store || is_load) ? alu_result : 32'h0;
     assign mem_wdata = is_store ? rf_rs2_data : 32'h0;
-    assign mem_we    = is_store;
+    assign mem_we    = is_store && !trap_taken;  // suppress store on a taken trap
 
     // Byte enable generation based on store funct3 and address[1:0]
     reg [3:0] store_wstrb;
@@ -486,9 +636,11 @@ module riscv_core (
     end
     assign mem_wstrb = store_wstrb;
 
-    // Control outputs
+    // Control outputs. exception/interrupt reflect a *taken* trap (handler
+    // installed), so they stay 0 before mtvec is programmed (no regression on
+    // pre-handler bring-up streams).
     assign wb_stall = stall_id_ex;
-    assign exception = 1'b0;
-    assign interrupt = 1'b0;
+    assign exception = trap_taken && any_exception;
+    assign interrupt = trap_taken && !any_exception;
 
 endmodule

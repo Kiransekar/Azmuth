@@ -127,9 +127,9 @@ when implementing software.
 | ID | Requirement / status |
 |----|----------------------|
 | REQ-IRQ-001 | Top-level IRQ outputs: `o_irq_eml`, `o_irq_snn`, `o_irq_nvm`, `o_irq_fault`, plus `timeout_irq` (policy). |
-| REQ-IRQ-002 | In v1.1 RTL only `o_irq_fault` is live (`= fault_irq_int`); `o_irq_eml`, `o_irq_snn`, `o_irq_nvm` are **tied to 1'b0** (DEV-008). `wake_irq_trigger` ORs the (stubbed) eml/snn/nvm IRQs for power wake. |
-| REQ-EXC-001 | `riscv_core.exception` is **hardwired to 1'b0** — the core never raises a synchronous exception (DEV-005). |
-| REQ-EXC-002 | The core has **no machine trap CSRs** (`mtvec`/`mepc`/`mcause`/`mstatus`/`mie`/`mip`). There is no trap vectoring, no `mret`, no privilege model (DEV-009). This blocks the `privilege`/`Zicsr` portions of RISCOF (audit §2.4) and the trap-handler firmware (software audit §S2.5) until implemented. |
+| REQ-IRQ-002 | The core now takes machine interrupts via `i_meip` (wired in the top to the aggregate of live fault/timeout IRQs), gated by `mstatus.MIE` & `mie` (DECISION-009; test `tb/irq_tb.v`). The top-level `o_irq_eml/snn/nvm` *sources* remain tied to 0 (DEV-008, partial). |
+| REQ-EXC-001 | The core detects and takes synchronous exceptions: illegal instruction (cause 2), ECALL (11), EBREAK (3), load/store address-misaligned (4/6). `exception` asserts on a taken exception trap. Implemented in `riscv_core.v` (DECISION-009; DEV-005 CLOSED). |
+| REQ-EXC-002 | The core implements M-mode trap CSRs — `mstatus`, `mie`, `mip`, `mtvec`, `mepc`, `mcause`, `mtval`, `mscratch` (+ `misa`/`mhartid` RO) — full Zicsr (CSRRW/S/C + imm), trap vectoring to `mtvec` (direct), and `mret`. Trap-taking is gated on `mtvec != 0` (handler installed). Tests `tb/trap_tb.v` (6/6), `tb/irq_tb.v` (5/5) (DEV-009 CLOSED). Full RISCOF still needs C-extension + broader coverage. |
 
 ## 8. Reset & power (`REQ-RST-*`, `REQ-PWR-*`)
 
@@ -159,11 +159,12 @@ these should be presented to adopters as working until closed.**
 | DEV-002 | ~~Xcew ID 6 (POL_UPD) decodes from no opcode.~~ **RESOLVED**: POL_UPD now decodes from custom-1 `0101011`. | `xcie_decoder.v` | CLOSED |
 | DEV-003 | `xcew_status` (0x7C1) in `xcie_csr.v` is a static register, never driven by live status. | `xcie_csr.v:72` | Wire real status; top partially compensates for bit[3] only. |
 | DEV-004 | CSRs 0x7CD/0x7CE/0x7CF (watchdog_timeout, ecc_scrub/corrected counts) are documented but not decoded at the top. | absent in `xcew_top_v1_1.v` write case | Implement or strike from README/CSR map. |
-| DEV-005 | `riscv_core.exception` hardwired to 0. | `riscv_core.v:491` | No synchronous exceptions raised. |
-| DEV-006 | `EXE_MEMO` returns to IDLE in 1 cycle; does not wait for memo completion. | `xcie_ctrl.v:88-91` | Add completion handshake if memo latency > 1 cycle. |
-| DEV-007 | No data-forwarding / load-use interlock beyond Xcew stall. | `riscv_core.v` pipeline | Confirm hazards covered by directed tests (audit §2.3). |
-| DEV-008 | `o_irq_eml/snn/nvm` tied to 0; only fault IRQ live. | `xcew_top_v1_1.v:801-804` | Connect unit IRQ sources. |
-| DEV-009 | No machine trap CSRs / privilege model in core. | grep: none in `riscv_core.v` | Required for RISCOF privilege+Zicsr and trap-handler firmware. |
+| DEV-005 | ~~`riscv_core.exception` hardwired to 0.~~ **RESOLVED** (DECISION-009): exceptions (illegal/ECALL/EBREAK/misalign) detected and taken to mtvec; `exception` reflects a taken trap. Test `tb/trap_tb.v` 6/6. | `riscv_core.v` | CLOSED |
+| DEV-006 | `EXE_MEMO` returns to IDLE in 1 cycle; does not wait for memo completion. | `xcie_ctrl.v:88-91` | Add completion handshake if memo latency > 1 cycle. (xcie_ctrl is vestigial.) |
+| DEV-007 | ~~No wrong-path flush~~ **flush RESOLVED** (DECISION-009): 1-cycle flush on branch/jump/trap/mret. No data-forwarding network, but the in-order single-issue core has no exposed RAW hazard (writeback completes before the next dependent read in these tests); confirm under §2.3 directed tests. | `riscv_core.v` | PARTIAL |
+| DEV-008 | Core now consumes `i_meip` = aggregate of live fault/timeout IRQs (interrupts reach the hart, verified `tb/irq_tb.v`). The top-level `o_irq_eml/snn/nvm` *sources* are still tied to 0. | `xcew_top_v1_1.v` | PARTIAL |
+| DEV-009 | ~~No machine trap CSRs / privilege model.~~ **RESOLVED** (DECISION-009): M-mode Zicsr (mstatus/mie/mip/mtvec/mepc/mcause/mtval/mscratch + misa/mhartid), interrupt taking, `mret`. Tests `tb/trap_tb.v`, `tb/irq_tb.v`. Full RISCOF still needs C-ext + broader coverage. | `riscv_core.v` | CLOSED |
+| DEV-012 | (was the latent off-by-4 `if_pc` bug affecting branch/jump targets & mepc) **RESOLVED** (DECISION-009): `if_pc <= pc_reg`. | `riscv_core.v` | CLOSED |
 | DEV-010 | No per-domain reset synchronizer documented. | audit §3.2 | Produce `docs/RESET_ARCH.md`. |
 | DEV-011 | No CDC inventory for core↔snn crossings. | audit §3.1 | Produce `docs/CDC_ANALYSIS.md`. |
 

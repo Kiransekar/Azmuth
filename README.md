@@ -95,6 +95,14 @@ The RISC-V core implements a **3-stage in-order pipeline**:
 
 When an Xcew custom instruction is decoded, the pipeline **stalls** until the Xcew unit signals completion (`i_xcew_done`).
 
+The core implements **M-mode trap support** (RISC-V Zicsr): machine CSRs
+(`mstatus`/`mie`/`mip`/`mtvec`/`mepc`/`mcause`/`mtval`/`mscratch`), synchronous
+exceptions (illegal instruction, ECALL, EBREAK, load/store misalignment),
+machine interrupt taking via `i_meip`/`i_mtip`/`i_msip`, and `mret`. Taken traps
+vector to `mtvec` (direct mode); trap-taking is gated on `mtvec != 0`. Verified by
+`tb/trap_tb.v` and `tb/irq_tb.v` (see DECISION-009). A 1-cycle wrong-path flush on
+taken branches/jumps/traps keeps the pipeline coherent.
+
 ---
 
 ## Directory Structure

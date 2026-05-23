@@ -10,9 +10,9 @@ test, and back from each test to a requirement.
 
 | Status | Count | Meaning |
 |--------|-------|---------|
-| IMPLEMENTED | 41 | RTL implements the requirement; a testbench exercises it |
-| PARTIAL | 1 | Partially implemented (REQ-IRQ-001) |
-| DEVIATION | 8 | Documented-but-unimplemented or stubbed — see `MICRO_ARCH_SPEC.md` §10 (DEV-003..011; DEV-001/002 now CLOSED) |
+| IMPLEMENTED | 44 | RTL implements the requirement; a testbench exercises it |
+| PARTIAL | 1 | Partially implemented (REQ-IRQ-001 top-level sources) |
+| DEVIATION | 5 | Documented-but-unimplemented or stubbed — `MICRO_ARCH_SPEC.md` §10 (DEV-003,004,006,010,011; DEV-001/002/005/009/012 CLOSED; DEV-007/008 PARTIAL) |
 | **Total** | **50** | |
 
 ## Gap analysis vs. audit §1.2 PASS criteria
@@ -49,9 +49,11 @@ The §1.2 PASS bar is: every REQ has ≥1 RTL site, ≥1 test, ≥1 **evidence f
 | ~~DEV-002~~ CLOSED | REQ-ISA-011 | POL_UPD now decodes from custom-1 |
 | DEV-003 | REQ-CSR-002 | xcew_status static |
 | DEV-004 | REQ-CSR-010 | 0x7CD–0x7CF not decoded |
-| DEV-005 | REQ-EXC-001 | exception tied 0 |
-| DEV-006 | REQ-FSM-006 | EXE_MEMO no wait |
-| DEV-008 | REQ-IRQ-002 | eml/snn/nvm IRQ tied 0 |
-| DEV-009 | REQ-EXC-002 | no trap CSRs / privilege |
+| ~~DEV-005~~ CLOSED | REQ-EXC-001 | exceptions detected+taken (DECISION-009) |
+| DEV-006 | REQ-FSM-006 | EXE_MEMO no wait (xcie_ctrl vestigial) |
+| DEV-007 PARTIAL | — | wrong-path flush added; no forwarding network |
+| DEV-008 PARTIAL | REQ-IRQ-002 | core takes i_meip; top eml/snn/nvm sources still tied 0 |
+| ~~DEV-009~~ CLOSED | REQ-EXC-002 | M-mode trap CSRs + Zicsr + mret (DECISION-009) |
 | DEV-010 | REQ-RST-001 | no reset synchronizer doc |
 | DEV-011 | REQ-CDC-002 | no CDC inventory |
+| ~~DEV-012~~ CLOSED | (branch/jump/mepc) | if_pc off-by-4 fixed (DECISION-009) |

@@ -121,6 +121,31 @@ pending team-lead ratification) · `SUPERSEDED` · `DEPRECATED`.
   unaffected (those concern claim-vs-evidence integrity, not license).
 - **Reviewed:** 2026-05-23 (active).
 
+## DECISION-009: M-mode trap gating + pipeline-correctness fixes
+- **Status:** ACCEPTED
+- **Date:** 2026-05-23
+- **Decided by:** Kiransekar
+- **Context:** `MICRO_ARCH_SPEC.md` DEV-005/008/009 — the core had no machine
+  trap CSRs, `exception` was tied 0, and IRQs were not wired to the core. Adding
+  spec-compliant trapping risked regressing existing tests that execute
+  un-initialized instruction streams (relying on undefined opcodes being silent).
+- **Decision:**
+  1. Implement M-mode Zicsr (mstatus/mie/mip/mtvec/mepc/mcause/mtval/mscratch +
+     misa/mhartid RO), exception detection (illegal, ECALL, EBREAK, load/store
+     misalign), machine external/timer/software interrupt taking, and `mret`.
+  2. **Gate trap-taking on `mtvec != 0`** (a handler is installed). This keeps
+     pre-handler bring-up behavior identical (existing tests never set mtvec)
+     while giving full trap behavior once firmware programs mtvec. Compatible
+     with RISCOF (its tests install handlers).
+  3. Fix `if_pc` (was `next_pc`, an off-by-4) so `id_ex_pc` is the instruction's
+     real PC — corrects branch/jump targets **and** `mepc`.
+  4. Add a 1-cycle wrong-path **flush** on any taken control transfer
+     (branch/jump/trap/mret), fixing the pre-existing branch-shadow.
+- **Consequences:** New core ports `i_meip/i_mtip/i_msip` (wired in both tops;
+  `i_meip` = aggregate of live fault/timeout IRQs). Tests `tb/trap_tb.v` (6/6),
+  `tb/irq_tb.v` (5/5). No regression: core_tb, cosim, soc, top all pass.
+- **Reviewed:** 2026-05-23 (active).
+
 ## DECISION-008: Xcew custom opcode map = standard RISC-V custom-0..3
 - **Status:** ACCEPTED
 - **Date:** 2026-05-23

@@ -42,9 +42,9 @@ REQ-AXI-001,4 master x 5 slave fixed-priority,rtl/soc/axi_lite_interconnect_v1_1
 REQ-AXI-002,Only m0=core active; m1-m3 reserved,rtl/xcew_top_v1_1.v:407,tb/soc_tb.v,pending,IMPLEMENTED
 REQ-AXI-003,Interconnect active-low aresetn,rtl/xcew_top_v1_1.v,tb/soc_tb.v,pending,IMPLEMENTED
 REQ-IRQ-001,IRQ outputs eml/snn/nvm/fault/timeout,rtl/xcew_top_v1_1.v:14,tb/security_tb.v,pending,PARTIAL
-REQ-IRQ-002,Only fault IRQ live; others tied 0,rtl/xcew_top_v1_1.v:801,(none),pending,DEVIATION (DEV-008)
-REQ-EXC-001,exception hardwired 0,rtl/core/riscv_core.v:491,(none),pending,DEVIATION (DEV-005)
-REQ-EXC-002,No machine trap CSRs/privilege,rtl/core/riscv_core.v,(none),pending,DEVIATION (DEV-009)
+REQ-IRQ-002,Machine ext interrupt taken via i_meip,rtl/core/riscv_core.v;rtl/xcew_top_v1_1.v,tb/irq_tb.v,tb/irq_tb.v 5/5,IMPLEMENTED
+REQ-EXC-001,Exceptions detected+taken (illegal/ECALL/EBREAK/misalign),rtl/core/riscv_core.v,tb/trap_tb.v,tb/trap_tb.v 6/6,IMPLEMENTED
+REQ-EXC-002,M-mode trap CSRs + Zicsr + mret,rtl/core/riscv_core.v,tb/trap_tb.v;tb/irq_tb.v,tb/trap_tb.v 6/6;tb/irq_tb.v 5/5,IMPLEMENTED
 REQ-RST-001,Active-high i_rst; AXI active-low,rtl/core/riscv_core.v,tb/soc_tb.v,pending,DEVIATION (DEV-010)
 REQ-PWR-001,Per-tile RUN/SLEEP FSM,rtl/power/orchestrator.v,tb/power_orch_tb.v,pending,IMPLEMENTED
 REQ-PWR-002,Gated clocks per tile + wake,rtl/xcew_top_v1_1.v:509,tb/power_orch_tb.v,pending,IMPLEMENTED
