@@ -171,6 +171,8 @@ module riscv_core (
     localparam ALU_SLT  = 4'b0101;
     localparam ALU_SHL  = 4'b0110;
     localparam ALU_SHR  = 4'b0111;
+    localparam ALU_SLTU = 4'b1000;   // unsigned set-less-than (BUG-031)
+    localparam ALU_SRA  = 4'b1001;   // arithmetic shift right (BUG-032)
     localparam ALU_PASS = 4'b1111;
 
     // ALU implementation
@@ -185,8 +187,10 @@ module riscv_core (
                 ALU_OR:   alu_compute = op1 | op2;
                 ALU_XOR:  alu_compute = op1 ^ op2;
                 ALU_SLT:  alu_compute = ($signed(op1) < $signed(op2)) ? 32'h1 : 32'h0;
+                ALU_SLTU: alu_compute = (op1 < op2) ? 32'h1 : 32'h0;
                 ALU_SHL:  alu_compute = op1 << op2[4:0];
                 ALU_SHR:  alu_compute = op1 >> op2[4:0];
+                ALU_SRA:  alu_compute = $signed(op1) >>> op2[4:0];
                 default:  alu_compute = op1;
             endcase
         end
@@ -373,8 +377,9 @@ module riscv_core (
                         FUNCT3_OR:      alu_control = ALU_OR;
                         FUNCT3_XOR:     alu_control = ALU_XOR;
                         FUNCT3_SLT:     alu_control = ALU_SLT;
+                        FUNCT3_SLTU:    alu_control = ALU_SLTU;   // BUG-031
                         FUNCT3_SLL:     alu_control = ALU_SHL;
-                        FUNCT3_SHR:     alu_control = ALU_SHR;
+                        FUNCT3_SHR:     alu_control = id_ex_instr[30] ? ALU_SRA : ALU_SHR; // BUG-032: SRA vs SRL
                         default:        alu_control = ALU_ADD;
                     endcase
                 end
@@ -385,8 +390,9 @@ module riscv_core (
                         FUNCT3_OR:      alu_control = ALU_OR;
                         FUNCT3_XOR:     alu_control = ALU_XOR;
                         FUNCT3_SLT:     alu_control = ALU_SLT;
+                        FUNCT3_SLTU:    alu_control = ALU_SLTU;   // SLTIU (BUG-031)
                         FUNCT3_SLL:     alu_control = ALU_SHL;
-                        FUNCT3_SHR:     alu_control = ALU_SHR;
+                        FUNCT3_SHR:     alu_control = id_ex_instr[30] ? ALU_SRA : ALU_SHR; // SRAI vs SRLI (BUG-032)
                         default:        alu_control = ALU_ADD;
                     endcase
                 end

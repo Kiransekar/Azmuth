@@ -47,6 +47,9 @@ implementing commit. Bug IDs `BUG-001`..`BUG-027` correspond to the
   declared proprietary license.
 
 ### Fixed
+- BUG-031/032 (found by the new `tb/isa_tb.v`): `SLTU`/`SLTIU` decoded as `ADD`
+  (no funct3=011 case) and `SRA`/`SRAI` did a logical shift (funct7[5] ignored).
+  Added `ALU_SLTU`/`ALU_SRA` and the decode cases. No regression.
 - BUG-028/029/030 (found by the new `tb/hazard_tb.v`, tapeout audit §2.3):
   store address used `rs1+rs2` not `rs1+imm`; loads ignored their offset
   (`generate_imm` lacked `LTYPE`); pipeline flush was 1 cycle but needs 2 (two

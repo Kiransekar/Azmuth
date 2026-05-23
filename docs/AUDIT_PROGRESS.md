@@ -39,10 +39,16 @@ sims), now fixed in `rtl/core/riscv_core.v`:**
 | BUG-028 | Store address = `rs1+rs2` (ALU op2 mux omitted STYPE) | add STYPE to imm-select |
 | BUG-029 | `generate_imm` missing LTYPE → load offsets always 0 | add LTYPE to I-type imm |
 | BUG-030 | 1-cycle flush, but 2 fetch stages → 2 wrong-path instrs (branch shadow) | 2-cycle flush |
+| BUG-031 | SLTU/SLTIU (funct3=011) decoded as ADD | add ALU_SLTU + decode (found by `tb/isa_tb.v`) |
+| BUG-032 | SRA/SRAI did logical shift (funct7[5] ignored) | add ALU_SRA + `instr[30]?SRA:SRL` |
 
-**Zero regression:** lint + trap_tb + irq_tb + decoder + core_tb + soc + top +
-cosim (499 PC changes) all pass. §2.3 now [~] (load-use interlock + Xcew-race
-scenarios remain). This is real progress toward RISCOF (§2.4).
+`tb/isa_tb.v` (12/12) adds ALU-completeness + load-use + BGE/BLTU/BGEU coverage;
+load-use and all 6 branch conditions verified working. **Six real ISA bugs total
+found+fixed across slices 6–7** (BUG-028..032 + the off-by-4 BUG-012 from slice 5).
+**Zero regression:** lint + all unit/integration sims pass (cosim 499 PC changes).
+§2.3 now [~] (load-use ✓; remaining: back-to-back Xcew + interrupt/watchdog-race
+scenarios). Real progress toward RISCOF (§2.4) — the core now executes RV32I
+loads/stores/branches/shifts/compares correctly.
 
 ## Slice 5 — trap / exception / interrupt RTL (DEV-005/008/009/012)
 

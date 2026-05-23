@@ -483,6 +483,8 @@ The following bugs were identified and fixed during code review:
 | 28 | `rtl/core/riscv_core.v` | Store address computed as `rs1 + rs2` instead of `rs1 + S-immediate` (ALU op2 mux omitted STYPE) — stores went to the wrong address | Added `OPCODE_STYPE` to the immediate-select; store data still sourced from rs2 via `mem_wdata`. Found by `tb/hazard_tb.v` |
 | 29 | `rtl/core/riscv_core.v` | `generate_imm` had no `OPCODE_LTYPE` case, so every load offset was 0 (loads ignored their immediate) | Added `OPCODE_LTYPE` to the I-type immediate case. Found by `tb/hazard_tb.v` |
 | 30 | `rtl/core/riscv_core.v` | Pipeline flush was 1 cycle, but two fetch stages (IF + ID/EX) mean **two** wrong-path instructions follow a taken branch/jump/trap — the second executed (branch shadow) | 2-cycle flush (`flush = redirect \| redirect_r`). Found by `tb/hazard_tb.v` |
+| 31 | `rtl/core/riscv_core.v` | `SLTU`/`SLTIU` (funct3=011) had no decode case → fell through to `ADD` (returned `rs1+rs2`) | Added `ALU_SLTU` (unsigned compare) + decode for funct3=011 in R- and I-type. Found by `tb/isa_tb.v` |
+| 32 | `rtl/core/riscv_core.v` | `SRA`/`SRAI` did a logical shift (`SHR` ignored funct7[5]) — arithmetic right shift of negatives was wrong | Added `ALU_SRA` (`$signed >>>`) and decode `instr[30] ? SRA : SRL`. Found by `tb/isa_tb.v` |
 
 ## Verilog 2001 Compliance & Tapeout Readiness
 

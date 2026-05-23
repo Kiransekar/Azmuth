@@ -119,6 +119,12 @@ sim_hazard:
 	@./tools/asm-to-hex.sh $(TB_DIR)/asm/hazard.S $(TB_DIR)/asm/hazard.hex 2>/dev/null || echo "  (toolchain absent; using committed hazard.hex)"
 	@iverilog -g2001 -o $(TB_DIR)/hazard_tb $(TB_DIR)/hazard_tb.v $(RTL_DIR)/core/riscv_core.v && vvp $(TB_DIR)/hazard_tb
 
+# Directed RV32I ALU-completeness / load-use / branch test (assembled; §2.3)
+.PHONY: sim_isa
+sim_isa:
+	@./tools/asm-to-hex.sh $(TB_DIR)/asm/isa.S $(TB_DIR)/asm/isa.hex 2>/dev/null || echo "  (toolchain absent; using committed isa.hex)"
+	@iverilog -g2001 -o $(TB_DIR)/isa_tb $(TB_DIR)/isa_tb.v $(RTL_DIR)/core/riscv_core.v && vvp $(TB_DIR)/isa_tb
+
 # Run EML simulations
 .PHONY: sim_eml
 sim_eml:
