@@ -9,7 +9,7 @@
 
 module azmuth_riscof_tb;
     localparam [31:0] BASE = 32'h80000000; // memory window base (matches link.ld)
-    localparam MEMW = 65536;   // 256 KB word memory
+    localparam MEMW = 262144;  // 1 MB word memory (arch-test branch tests are ~300KB)
 
     reg clk = 0, rst = 1;
     wire [31:0] pc; wire [31:0] instr;
@@ -42,14 +42,14 @@ module azmuth_riscof_tb;
     // Unified memory windowed at BASE: word index = (addr - BASE) >> 2
     wire [31:0] iidx = (pc - BASE) >> 2;
     wire [31:0] didx = (mem_addr - BASE) >> 2;
-    assign instr     = mem[iidx[15:0]];
-    assign mem_rdata = mem[didx[15:0]];
+    assign instr     = mem[iidx[17:0]];
+    assign mem_rdata = mem[didx[17:0]];
     always @(posedge clk) begin
         if (mem_we) begin
-            if (mem_wstrb[0]) mem[didx[15:0]][7:0]   <= mem_wdata[7:0];
-            if (mem_wstrb[1]) mem[didx[15:0]][15:8]  <= mem_wdata[15:8];
-            if (mem_wstrb[2]) mem[didx[15:0]][23:16] <= mem_wdata[23:16];
-            if (mem_wstrb[3]) mem[didx[15:0]][31:24] <= mem_wdata[31:24];
+            if (mem_wstrb[0]) mem[didx[17:0]][7:0]   <= mem_wdata[7:0];
+            if (mem_wstrb[1]) mem[didx[17:0]][15:8]  <= mem_wdata[15:8];
+            if (mem_wstrb[2]) mem[didx[17:0]][23:16] <= mem_wdata[23:16];
+            if (mem_wstrb[3]) mem[didx[17:0]][31:24] <= mem_wdata[31:24];
         end
     end
 
@@ -86,7 +86,7 @@ module azmuth_riscof_tb;
 
     // Safety timeout
     initial begin
-        #20000000;  // 2,000,000 cycles
+        #200000000;  // 20,000,000 cycles (branch tests run many cases)
         $display("RISCOF: TIMEOUT (no tohost write) — dumping partial signature");
         dump_signature;
         $finish;

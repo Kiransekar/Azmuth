@@ -37,7 +37,7 @@ iverilog -g2001 -o "$SIM" tb/riscof/azmuth_riscof_tb.v rtl/core/riscv_core.v 2>/
 pass=0; fail=0; err=0; results="$OUT/results.txt"; : > "$results"
 for t in "$SRC"/*.S; do
   name=$(basename "$t" .S); w="$WORK/$name"; mkdir -p "$w"
-  if ! $GCC -march=rv32i_zicsr -mabi=ilp32 -static -mcmodel=medany -fvisibility=hidden \
+  if ! $GCC -march=rv32i_zicsr -mabi=ilp32 -static -mcmodel=medany -fno-pic -fvisibility=hidden \
         -nostdlib -nostartfiles -T "$PENV/link.ld" -I "$PENV" -I "$AENV" \
         -DXLEN=32 -DTEST_CASE_1=True "$t" -o "$w/my.elf" 2>"$w/cc.log"; then
     echo "ERROR(compile) $name" | tee -a "$results"; err=$((err+1)); continue
@@ -50,7 +50,7 @@ for t in "$SRC"/*.S; do
   ent=0x$($OBJDUMP -t "$w/my.elf" | awk '/ rvtest_entrypoint$/{print $1; exit}')
   timeout 30 spike --isa=rv32i_zicsr --pc="$ent" +signature="$w/ref.sig" \
         +signature-granularity=4 "$w/my.elf" >/dev/null 2>&1
-  timeout 90 vvp "$SIM" +hex="$w/my.hex" +sig="$w/dut.sig" \
+  timeout 300 vvp "$SIM" +hex="$w/my.hex" +sig="$w/dut.sig" \
         +begin="$beg" +end="$end" +tohost="$toh" >/dev/null 2>&1
   if [ ! -s "$w/ref.sig" ]; then echo "ERROR(ref) $name" | tee -a "$results"; err=$((err+1)); continue; fi
   if [ ! -s "$w/dut.sig" ]; then echo "ERROR(dut) $name" | tee -a "$results"; err=$((err+1)); continue; fi
