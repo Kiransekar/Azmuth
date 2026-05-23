@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // toolchain/XcewOptPass.cpp
 // LLVM MachineFunctionPass for EML DAG optimization and CSE elimination
 // Traverses IR for repeated patterns, builds DAG, emits optimized EML instructions

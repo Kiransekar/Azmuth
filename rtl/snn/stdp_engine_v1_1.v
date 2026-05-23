@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // stdp_engine_v1_1.v
 // Spike-Timing-Dependent Plasticity learning engine for Xcew Processor v1.1
 // Verilog-2001 compliant, synthesizable

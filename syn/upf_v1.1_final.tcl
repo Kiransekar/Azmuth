@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # syn/upf_v1.1_final.tcl
 # ============================================================================
 # Unified Power Format (UPF) - Xcew Processor v1.1 Final

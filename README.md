@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary -->
 # Azmuth — Xcew Processor v1.1
 
 An AI Execution Context processor based on the RISC-V ISA with custom Xcew extensions for neural-network inference, expression-machine-learning acceleration, non-volatile memory, and deterministic policy execution.
@@ -360,6 +361,25 @@ make deps                    # Generate dependency file
 make clean                   # Remove build artifacts
 ```
 
+### Flow entry points (`flow/`)
+
+One script per flow stage wraps the Makefile (tapeout audit §0.1). These are the
+canonical way to drive each stage; the previous ~20 root-level scripts
+(PnR variants, monitors) were consolidated here.
+
+```bash
+flow/lint.sh                 # design lint + per-file Verilog-2001 syntax sweep
+flow/sim.sh [target]         # all sims, or one (core|eml|soc|top|snn_tile_256|cosim)
+flow/synth.sh [quick|full]   # Yosys synthesis
+flow/formal.sh               # SymbiYosys formal proofs
+flow/pnr.sh                  # dockerized OpenROAD PnR (resource-limited, timeout, local fallback)
+flow/signoff.sh [v1.1|postpr]
+flow/compliance.sh           # claim re-verification + CSR collision check
+```
+
+Generated reports land under `reports/<date>/<stage>/` with `reports/latest`
+pointing at the newest set (see [`reports/README.md`](reports/README.md)).
+
 ---
 
 ## Synthesis Flow
@@ -529,4 +549,9 @@ Comprehensive architecture document available at `docs/ARCHITECTURE.md`:
 
 ## License
 
-See individual source files for license information.
+**Proprietary — All Rights Reserved.** Copyright (c) 2026 Kiransekar. See
+[`LICENSE`](LICENSE); every source file carries
+`SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary`. Upstream toolchain
+components retain their own licenses (inventory in
+[`toolchain/LICENSES.md`](toolchain/LICENSES.md)). Rationale recorded as
+DECISION-007 in [`docs/DECISIONS.md`](docs/DECISIONS.md).

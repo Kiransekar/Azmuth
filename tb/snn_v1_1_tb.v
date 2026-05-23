@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/snn_v1_1_tb.v
 // Combined testbench for LIF neuron v1.1 + STDP engine v1.1
 // Tests: neuron integration, threshold, spike, refractory

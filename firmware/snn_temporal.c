@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 /*
  * firmware/snn_temporal.c
  * SNN Temporal Coding and TTFS Implementation

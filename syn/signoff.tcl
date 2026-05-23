@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # syn/signoff.tcl
 # Signoff checks for Xcew Processor design
 # Includes DRC, LVS, timing, power, and physical verification

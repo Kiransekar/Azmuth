@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // rtl/power/orchestrator.v
 // Power Orchestration Controller for Xcew Processor
 // Implements per-tile sleep/wake FSM with retention registers

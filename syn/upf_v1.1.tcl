@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # syn/upf_v1.1.tcl
 # UPF Extension for Xcew Processor v1.1
 # Adds power orchestration and body bias control to existing UPF

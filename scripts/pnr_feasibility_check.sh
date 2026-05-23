@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # pnr_feasibility_check.sh
 # Physical Design Feasibility Check for Xcew Processor v1.1
 # Validates floorplan, placement, and routing feasibility using OpenROAD

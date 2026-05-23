@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 set -euo pipefail
 
 # =============================================================================

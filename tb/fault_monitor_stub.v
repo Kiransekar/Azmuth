@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/fault_monitor_stub.v
 // Stub for fault_monitor (has ecc function call issues with iverilog)
 

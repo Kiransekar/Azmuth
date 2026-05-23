@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # Read design
 read_verilog rtl/xcew_top_v1_1.v
 read_verilog rtl/core/riscv_core.v

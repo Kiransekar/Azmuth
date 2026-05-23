@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # syn/synth.tcl
 # Yosys synthesis script for Xcew Processor
 

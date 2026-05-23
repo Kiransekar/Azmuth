@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # syn/sdc_minimal.sdc
 # Minimal Synopsys Design Constraints for Xcew Processor - Compatible with OpenROAD
 # Sky130 process, 250MHz target (4.0ns period)

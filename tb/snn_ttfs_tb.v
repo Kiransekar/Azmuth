@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/snn_ttfs_tb.v
 // Testbench for SNN TTFS (Time-to-First-Spike) temporal coding and STDP
 // Verilog 2001 compliant

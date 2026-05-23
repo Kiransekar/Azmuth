@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # syn/upf_final.tcl
 # Unified Power Format (UPF) script for Xcew Processor
 # Power intent definition for TSMC 130nm process implementation

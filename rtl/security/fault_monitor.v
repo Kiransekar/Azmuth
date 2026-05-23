@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // rtl/security/fault_monitor.v
 // Security Fault Monitor for Xcew Processor
 // Includes watchdog, ECC, and fault detection

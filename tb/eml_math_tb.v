@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // Testbench for EML compute_exp and compute_ln Q16.16 fixed-point functions
 // Tests edge cases, positive/negative inputs, sub-unity values, and accuracy
 

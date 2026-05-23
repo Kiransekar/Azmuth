@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // axi_lite_interconnect.v
 // AXI4-Lite Crossbar Interconnect for Xcew SOC
 // 4 Masters, 5 Slaves with fixed priority arbitration

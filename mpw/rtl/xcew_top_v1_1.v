@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // xcew_top_v1.1.v
 // Unified Top-Level Module for Xcew Processor v1.1
 // Merges v1.0 SOC + 6A(DAG Cache) + 6B(TTFS/STDP) + 6C(Power/Body Bias) + 6D(Security)

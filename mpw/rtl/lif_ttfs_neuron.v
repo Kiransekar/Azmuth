@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // rtl/snn/lif_ttfs_neuron.v
 // Leaky Integrate-and-Fire Temporal Coding Neuron with Time-to-First-Spike (TTFS)
 // Replaces rate-based encoding with temporal window comparator

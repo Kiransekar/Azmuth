@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/axi_lite_interconnect_v1_1_tb.v
 // Testbench for AXI4-Lite interconnect v1.1
 // Tests: handshake, ROM read, SRAM write, contention arbitration

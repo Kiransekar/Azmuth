@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // lif_ttfs_neuron_v1_1.v
 // LIF Neuron with Time-to-First-Spike encoding for Xcew Processor v1.1
 // Verilog-2001 compliant, synthesizable

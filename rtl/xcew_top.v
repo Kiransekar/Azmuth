@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // xcew_top.v
 // Top-level module for Xcew Processor
 // Implements the interface as specified in the architecture document

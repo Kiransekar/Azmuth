@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary -->
 # Azmuth Xcew Processor — Comprehensive Architecture Document
 
 ## Table of Contents

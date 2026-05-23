@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/top_tb.v
 // Top-level testbench for Xcew processor (xcew_top)
 

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // snn_tile_256.v
 // 256-neuron Spiking Neural Network classifier for Xcew processor v1.1
 // Wraps lif_ttfs_neuron_v1_1_array and implements winner-take-all classification

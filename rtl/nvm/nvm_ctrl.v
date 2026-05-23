@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // nvm_ctrl.v
 // Non-Volatile Memory controller for Xcew processor
 // Implements ReRAM controller with wear-leveling and ECC

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 """
 Visualize floorplan for Xcew Processor v1.1
 Generates floorplan diagram from DEF file

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // snn_tile.v
 // Spiking Neural Network tile for Xcew processor
 // Implements the LIF neuron array and spike router as specified

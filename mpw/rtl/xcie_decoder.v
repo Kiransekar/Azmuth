@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // xcie_decoder.v
 // Instruction decoder for Xcew custom instructions
 // Based on the specifications in the architecture document

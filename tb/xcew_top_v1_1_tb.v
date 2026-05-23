@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/xcew_top_v1_1_tb.v
 // Testbench for Xcew Processor top-level v1.1
 // Tests: reset deassert, CSR read of 0x7C0, CSR read of 0x7C1

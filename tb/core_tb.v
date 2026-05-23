@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/core_tb.v
 // Testbench for the 3-stage RISC-V core with Xcew extensions
 

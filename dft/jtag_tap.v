@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // dft/jtag_tap.v
 // JTAG Test Access Port (TAP) controller for Xcew Processor
 // Implements IEEE 1149.1 standard for boundary scan and device testing

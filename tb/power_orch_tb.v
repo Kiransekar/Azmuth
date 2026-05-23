@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/power_orch_tb.v
 // Testbench for Power Orchestration Controller
 // Verilog 2001 compliant

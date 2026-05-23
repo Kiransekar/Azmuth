@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // dft/bist_wrapper.v
 // Built-In Self Test (BIST) wrapper for Xcew Processor
 // Implements memory BIST and logic BIST for comprehensive testing

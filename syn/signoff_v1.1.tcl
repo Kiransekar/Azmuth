@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # syn/signoff_v1.1.tcl
 # ============================================================================
 # Signoff Verification Script - Xcew Processor v1.1

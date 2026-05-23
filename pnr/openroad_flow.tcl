@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # pnr/openroad_flow.tcl
 # OpenROAD Physical Implementation Flow for Xcew Processor
 # TSMC 130nm process, targeting 18mm² maximum area

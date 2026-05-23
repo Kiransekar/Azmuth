@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # syn/synth_final.tcl
 # Final synthesis flow for Xcew Processor targeting TSMC 130nm process
 

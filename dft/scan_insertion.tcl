@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # dft/scan_insertion.tcl
 # Design for Testability (DFT) scan chain insertion script for Xcew Processor
 # Implements scan chains, boundary scan, and ATPG for manufacturing test

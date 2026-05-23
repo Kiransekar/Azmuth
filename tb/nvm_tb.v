@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // nvm_tb.v
 // Testbench for NVM controller (nvm_ctrl.v)
 // Tests: reset init, write+read, ECC single-bit correction,

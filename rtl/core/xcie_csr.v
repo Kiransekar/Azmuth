@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // xcie_csr.v
 // Custom Control and Status Registers for Xcew processor
 // Implements CSR addresses as specified in the architecture document

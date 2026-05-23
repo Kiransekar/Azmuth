@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/snn_tile_256_tb.v
 // Testbench for parameterized snn_tile_256
 // Tests: 8-neuron configuration (faster sim), sequential loading, classification

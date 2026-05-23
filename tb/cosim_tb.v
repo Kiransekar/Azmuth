@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/cosim_tb.v
 // Co-simulation testbench for Xcew Processor
 // Self-contained: runs with iverilog, no Verilator/RISC-V toolchain required

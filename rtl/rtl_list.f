@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 rtl/core/policy_determinism.v
 rtl/core/riscv_core.v
 rtl/core/xcie_csr.v

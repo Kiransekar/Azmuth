@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 /*
  * firmware/eml_optimizer.c
  * EML DAG optimizer with profiling and runtime adaptation

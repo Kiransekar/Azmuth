@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/soc_tb.v
 // Testbench for Xcew SOC with AXI4-Lite interconnect
 // Verilog 2001 compliant

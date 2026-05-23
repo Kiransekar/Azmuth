@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/eml_dag_tb.v
 // Testbench for EML DAG cache with compression and CSE verification
 // Verilog 2001 compliant

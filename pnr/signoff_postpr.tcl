@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 # pnr/signoff_postpr.tcl
 # Post-Physical Implementation Signoff Verification
 # Timing Analysis, DRC, and LVS checks for Xcew Processor

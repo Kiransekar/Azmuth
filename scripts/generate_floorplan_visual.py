@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 """
 Visual representation of the Xcew Processor floorplan
 Based on the OpenROAD flow script specifications

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/eml_dag_cache_stub.v
 // Stub for eml_dag_cache (uses 'break' statements that iverilog can't handle)
 

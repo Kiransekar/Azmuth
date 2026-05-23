@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // axi_lite_interconnect_v1_1.v
 // AXI4-Lite interconnect for Xcew Processor v1.1
 // 4 masters, 5 slaves, fixed-priority arbiter

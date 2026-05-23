@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/security_tb.v
 // Testbench for Security Features (Constant Time, Deterministic Policies, Fault Monitor)
 // Verilog 2001 compliant

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // rtl/eml/eml_constant_time.v
 // Constant-Time EML Operations for Side-Channel Attack Prevention
 

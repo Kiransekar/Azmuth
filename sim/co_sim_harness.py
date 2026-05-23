@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Copyright (c) 2026 Kiransekar. All rights reserved.
 """
 Co-simulation harness for Xcew Processor
 Compares RTL simulation with golden models and measures performance metrics

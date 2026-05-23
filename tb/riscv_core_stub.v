@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // tb/riscv_core_stub.v
 // Stub for riscv_core (uses SV 'inside' expressions that iverilog can't handle)
 

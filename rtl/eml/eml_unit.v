@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // eml_unit.v
 // Expression Machine Learning unit for Xcew processor
 // Implements the 5-stage pipeline described in the architecture document

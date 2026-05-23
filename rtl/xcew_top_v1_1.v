@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // xcew_top_v1_1.v
 // Top-level module for Xcew Processor v1.1
 // Verilog-2001 compliant, synthesizable

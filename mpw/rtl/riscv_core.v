@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // riscv_core.v
 // In-order 3-stage RISC-V core with Xcew extension
 // IF → ID/EX → WB pipeline

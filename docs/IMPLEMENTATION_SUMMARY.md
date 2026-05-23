@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary -->
 # NeuroRiscV Implementation Summary
 
 ## Completed Components

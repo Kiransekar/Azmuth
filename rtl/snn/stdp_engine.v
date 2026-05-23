@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // rtl/snn/stdp_engine.v
 // Spike-Timing Dependent Plasticity Engine
 // Implements biological learning rule for synaptic weight updates

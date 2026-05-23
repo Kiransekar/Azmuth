@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // EML DAG Scheduler module for tracking and reusing nodes
 module eml_dag_scheduler (
     input wire clk,

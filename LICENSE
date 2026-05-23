@@ -1,0 +1,49 @@
+Azmuth — Xcew RISC-V Processor
+Proprietary License — All Rights Reserved
+SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+
+Copyright (c) 2026 Kiransekar. All rights reserved.
+
+1. DEFINITIONS
+   "Work" means this repository in its entirety, including but not limited to
+   the RTL (Verilog/SystemVerilog) hardware description, firmware, software,
+   toolchain components authored herein, scripts, build/flow automation,
+   documentation, floorplans, and any generated artifacts.
+   "Licensor" means the copyright holder named above.
+
+2. GRANT
+   No license, right, or permission is granted by this document. The Work is
+   made available for reference only. All rights are reserved by the Licensor.
+
+3. RESTRICTIONS
+   Without the prior written permission of the Licensor, you may NOT:
+   (a) copy, reproduce, or redistribute the Work or any portion of it;
+   (b) modify, adapt, translate, or create derivative works;
+   (c) use the Work, in whole or in part, to design, simulate, synthesize,
+       fabricate, or manufacture any integrated circuit or device;
+   (d) sublicense, sell, lease, rent, or otherwise commercially exploit the
+       Work;
+   (e) remove or alter any copyright, license, or proprietary notice.
+
+4. THIRD-PARTY COMPONENTS
+   Where the Work incorporates or builds upon third-party components (for
+   example, upstream toolchain sources patched under toolchain/), those
+   components remain governed by their own licenses. See toolchain/LICENSES.md
+   (when present) for an inventory. This proprietary license applies only to
+   the original contributions of the Licensor.
+
+5. NO WARRANTY
+   THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. THE WORK IS NOT
+   CERTIFIED OR QUALIFIED FOR USE IN SAFETY-CRITICAL OR LIFE-SUSTAINING
+   SYSTEMS.
+
+6. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+   LIABILITY, WHETHER IN CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR
+   IN CONNECTION WITH THE WORK OR ITS USE.
+
+7. CONTACT
+   For licensing inquiries, contact the Licensor via the project repository:
+   https://github.com/Kiransekar/Azmuth

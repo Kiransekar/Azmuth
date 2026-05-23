@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+// Copyright (c) 2026 Kiransekar. All rights reserved.
 // rtl/core/policy_determinism.v
 // Deterministic Policy Execution Controller for Xcew Processor
 
