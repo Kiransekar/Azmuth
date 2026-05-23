@@ -24,6 +24,26 @@ model**, `exception` is tied to 0, and 3 of 4 IRQs are tied off. These block
 RISCOF privilege/Zicsr (§2.4) and trap-handler firmware (§S2.5) and are recorded
 as DEV-005/008/009 rather than presented as working.
 
+## Slice 6 — directed ISA/hazard test (§2.3) → found+fixed 3 core bugs
+
+Built `tb/hazard_tb.v` from real assembled RISC-V (`tb/asm/hazard.S` via
+`tools/asm-to-hex.sh`, using the available `riscv64-unknown-elf-gcc`). 13/13
+checks: RAW chains, all ALU ops, branch resolution + wrong-path flush, JAL
+link/target, word load/store, store byte-enables, CSR read-after-write.
+
+**The test immediately exposed 3 real correctness bugs (none caught by prior
+sims), now fixed in `rtl/core/riscv_core.v`:**
+
+| Bug | Description | Fix |
+|-----|-------------|-----|
+| BUG-028 | Store address = `rs1+rs2` (ALU op2 mux omitted STYPE) | add STYPE to imm-select |
+| BUG-029 | `generate_imm` missing LTYPE → load offsets always 0 | add LTYPE to I-type imm |
+| BUG-030 | 1-cycle flush, but 2 fetch stages → 2 wrong-path instrs (branch shadow) | 2-cycle flush |
+
+**Zero regression:** lint + trap_tb + irq_tb + decoder + core_tb + soc + top +
+cosim (499 PC changes) all pass. §2.3 now [~] (load-use interlock + Xcew-race
+scenarios remain). This is real progress toward RISCOF (§2.4).
+
 ## Slice 5 — trap / exception / interrupt RTL (DEV-005/008/009/012)
 
 The biggest technical gap closed: the core can now take exceptions and

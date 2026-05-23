@@ -420,7 +420,8 @@ Reviewed: YYYY-MM-DD (active)
 **FAIL:** Below threshold without per-gap documented justification.
 **Owner:** Pair B
 
-### 2.3 [ ] HARD GATE — Directed tests for pipeline hazards
+### 2.3 [~] HARD GATE — Directed tests for pipeline hazards
+> _`tb/hazard_tb.v` (assembled from `tb/asm/hazard.S`, 13/13) covers RAW chains, ALU ops, branch resolution + wrong-path flush, JAL link/target, word load/store, store byte-enables, CSR read-after-write. Found+fixed BUG-028/029/030. Remaining for full PASS: load-use interlock, back-to-back Xcew, watchdog/interrupt-coincident-with-Xcew races._
 
 The 3-stage in-order pipeline plus Xcew stall is a known hazard surface. Required directed tests, each with documented expected behavior:
 

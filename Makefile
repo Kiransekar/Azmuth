@@ -113,6 +113,12 @@ sim_trap:
 sim_irq:
 	@iverilog -g2001 -o $(TB_DIR)/irq_tb $(TB_DIR)/irq_tb.v $(RTL_DIR)/core/riscv_core.v && vvp $(TB_DIR)/irq_tb
 
+# Directed RV32I+Zicsr pipeline/hazard/ISA test (assembled; §2.3)
+.PHONY: sim_hazard
+sim_hazard:
+	@./tools/asm-to-hex.sh $(TB_DIR)/asm/hazard.S $(TB_DIR)/asm/hazard.hex 2>/dev/null || echo "  (toolchain absent; using committed hazard.hex)"
+	@iverilog -g2001 -o $(TB_DIR)/hazard_tb $(TB_DIR)/hazard_tb.v $(RTL_DIR)/core/riscv_core.v && vvp $(TB_DIR)/hazard_tb
+
 # Run EML simulations
 .PHONY: sim_eml
 sim_eml:

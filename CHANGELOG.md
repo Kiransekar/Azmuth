@@ -19,6 +19,9 @@ implementing commit. Bug IDs `BUG-001`..`BUG-027` correspond to the
   (DEV-001..011), `docs/TRACEABILITY.csv`+`.md` (§1.2), `docs/BUG_RETROSPECTIVE.md`
   (§1.4).
 - `tb/xcie_decoder_tb.v` — directed decoder test (10/10) covering REQ-ISA-010..014.
+- `tb/hazard_tb.v` + `tb/asm/hazard.S` + `tools/asm-to-hex.sh` — directed RV32I+Zicsr
+  pipeline/hazard/ISA test (§2.3), assembled from real RISC-V asm (13/13). New
+  make target `sim_hazard`.
 - `reports/2026-05-23/synth/SYNTH_QOR_NOTE.md` and `reports/2026-05-23/formal/FORMAL_NOTE.md`
   — empirical §5.1 / §1.3(c) findings.
 - `LICENSE` — proprietary "All Rights Reserved" license (DECISION-007, audit §0.7).
@@ -44,6 +47,11 @@ implementing commit. Bug IDs `BUG-001`..`BUG-027` correspond to the
   declared proprietary license.
 
 ### Fixed
+- BUG-028/029/030 (found by the new `tb/hazard_tb.v`, tapeout audit §2.3):
+  store address used `rs1+rs2` not `rs1+imm`; loads ignored their offset
+  (`generate_imm` lacked `LTYPE`); pipeline flush was 1 cycle but needs 2 (two
+  fetch stages → two wrong-path instructions after a taken branch/jump/trap).
+  All three fixed in `rtl/core/riscv_core.v`; no regression.
 - DEV-005/DEV-009/DEV-012 (DECISION-009): implemented M-mode trap support in
   `rtl/core/riscv_core.v` — Zicsr CSRs (mstatus/mie/mip/mtvec/mepc/mcause/mtval/
   mscratch + misa/mhartid), exception detection (illegal/ECALL/EBREAK/misalign),

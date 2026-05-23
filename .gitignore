@@ -80,3 +80,6 @@ sby/*/
 
 # Compiled testbench binaries (iverilog output, no extension)
 tb/*_tb
+
+# but test-program fixtures ARE committed (run tests without toolchain)
+!tb/asm/*.hex

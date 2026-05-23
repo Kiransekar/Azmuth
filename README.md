@@ -480,6 +480,9 @@ The following bugs were identified and fixed during code review:
 | 25 | `rtl/eml/eml_unit.v` | `compute_exp` Horner polynomial used `f²` instead of `f`; x/ln2 multiply overflowed 32-bit | Fixed Horner evaluation; replaced multiply with shift-add (x+x>>2+x>>3+x>>4+x>>8+x>>9 ≈ x×1.4434) |
 | 26 | `rtl/eml/eml_unit.v` | `compute_ln` priority encoder found lowest set bit (overwrote highest); unsigned multiply with negative coeffs; Taylor series 12% error at f=0.1 | Break after first match; 48-bit signed intermediates with decimal constants; least-squares minimax coefficients (<0.2% max error) |
 | 27 | `tb/eml_math_tb.v` | No testbench for EML fixed-point math | 40-test suite covering edge cases, positive/negative inputs, sub-unity values, ±2% relative tolerance |
+| 28 | `rtl/core/riscv_core.v` | Store address computed as `rs1 + rs2` instead of `rs1 + S-immediate` (ALU op2 mux omitted STYPE) — stores went to the wrong address | Added `OPCODE_STYPE` to the immediate-select; store data still sourced from rs2 via `mem_wdata`. Found by `tb/hazard_tb.v` |
+| 29 | `rtl/core/riscv_core.v` | `generate_imm` had no `OPCODE_LTYPE` case, so every load offset was 0 (loads ignored their immediate) | Added `OPCODE_LTYPE` to the I-type immediate case. Found by `tb/hazard_tb.v` |
+| 30 | `rtl/core/riscv_core.v` | Pipeline flush was 1 cycle, but two fetch stages (IF + ID/EX) mean **two** wrong-path instructions follow a taken branch/jump/trap — the second executed (branch shadow) | 2-cycle flush (`flush = redirect \| redirect_r`). Found by `tb/hazard_tb.v` |
 
 ## Verilog 2001 Compliance & Tapeout Readiness
 

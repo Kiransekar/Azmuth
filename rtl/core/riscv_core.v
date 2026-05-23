@@ -198,7 +198,9 @@ module riscv_core (
         input [6:0]  opcode;
         begin
             case (opcode)
-                OPCODE_ITYPE:  // I-type immediate
+                OPCODE_ITYPE, OPCODE_LTYPE:  // I-type immediate (ALU-imm and loads)
+                    // BUG-029: OPCODE_LTYPE was missing, so load offsets were
+                    // always 0 (fell through to default).
                     generate_imm = { {20{instr[31]}}, instr[31:20] };
                 OPCODE_STYPE:  // S-type immediate
                     generate_imm = { {20{instr[31]}}, instr[31:25], instr[11:7] };
@@ -296,11 +298,11 @@ module riscv_core (
             end
 
         end else if (!stall_id_ex && !bubble_id_ex) begin
-            // Capture instruction from IF stage (squash if it is the wrong-path
-            // instruction following a taken control transfer).
+            // Capture instruction from IF stage (squash the two wrong-path
+            // instructions following a taken control transfer).
             id_ex_instr <= if_instr;
             id_ex_pc <= if_pc;
-            id_ex_valid <= !redirect;
+            id_ex_valid <= !flush;
 
             // Decode instruction fields
             id_opcode <= if_instr[6:0];
@@ -355,7 +357,13 @@ module riscv_core (
     always @(*) begin
         if (id_ex_valid && !id_ex_is_xcew) begin
             alu_op1 = rf_rs1_data;
-            alu_op2 = (id_ex_instr[6:0] == OPCODE_ITYPE || id_ex_instr[6:0] == OPCODE_LTYPE) ? id_imm : rf_rs2_data;
+            // Address/operand: loads, I-type, AND stores use the immediate
+            // (store address = rs1 + S-imm; the store DATA comes from rs2 via
+            // mem_wdata, not the ALU). BUG-028: stores previously used rs2 here,
+            // computing rs1+rs2 as the address.
+            alu_op2 = (id_ex_instr[6:0] == OPCODE_ITYPE ||
+                       id_ex_instr[6:0] == OPCODE_LTYPE ||
+                       id_ex_instr[6:0] == OPCODE_STYPE) ? id_imm : rf_rs2_data;
 
             case (id_ex_instr[6:0])
                 OPCODE_RTYPE: begin
@@ -545,10 +553,17 @@ module riscv_core (
                       (any_exception | irq_pending);
     wire mret_taken = is_mret && id_ex_valid && !trap_taken;
 
-    // A taken control transfer (branch/jump/trap/mret) redirects the PC; the
-    // sequentially-fetched instruction already in IF is wrong-path and must be
-    // squashed (1-cycle flush) so it does not execute.
+    // A taken control transfer (branch/jump/trap/mret) redirects the PC. With
+    // IF and ID/EX register stages, the TWO sequentially-fetched instructions
+    // behind it (PC+4 and PC+8) are wrong-path and must both be squashed, so the
+    // flush spans two capture cycles (redirect this cycle + redirect last cycle).
     wire redirect = pc_sel_jump | trap_taken | mret_taken;
+    reg  redirect_r;
+    always @(posedge clk or posedge rst) begin
+        if (rst) redirect_r <= 1'b0;
+        else if (!stall_id_ex) redirect_r <= redirect;
+    end
+    wire flush = redirect | redirect_r;
 
     // Trap cause / mtval (synchronous exceptions take priority over interrupts)
     reg [31:0] trap_cause, trap_tval;
