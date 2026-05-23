@@ -24,6 +24,16 @@ model**, `exception` is tied to 0, and 3 of 4 IRQs are tied off. These block
 RISCOF privilege/Zicsr (§2.4) and trap-handler firmware (§S2.5) and are recorded
 as DEV-005/008/009 rather than presented as working.
 
+## Slice 3 — deviation closure + tool-run evidence
+
+| Item | Status | What landed |
+|------|--------|-------------|
+| DEV-001 / DEV-002 | **CLOSED** | `rtl/core/xcie_decoder.v` aligned to standard custom-0..3 map (DECISION-008); POL_UPD reachable; `tb/xcie_decoder_tb.v` 10/10. Lint clean after change. |
+| Tapeout 5.1 (synth area) | **OPEN — finding** | `make synth` does not converge (300 s timeout) because `nvm_ctrl`'s 64 KB internal memory lowers to ~2 M registers. Empirically validates DECISION-005 L1 (external NVM). `reports/2026-05-23/synth/SYNTH_QOR_NOTE.md`. |
+| Tapeout 1.3(c) (formal) | **OPEN — finding** | `sby` installed but the `.sby` files are malformed (invalid `[defs]`/`[property]` sections; properties not embedded as SVA). "18 properties" never ran. Not hot-fixed to avoid a vacuous proof. `reports/2026-05-23/formal/FORMAL_NOTE.md`. |
+
+Traceability now: 41 IMPLEMENTED / 1 PARTIAL / 8 DEVIATION (DEV-001/002 closed).
+
 ## Done — Section 0 + governance (Foundation, slice 1)
 
 | Item | Gate | What landed |

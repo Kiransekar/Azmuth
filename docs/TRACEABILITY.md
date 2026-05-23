@@ -10,9 +10,9 @@ test, and back from each test to a requirement.
 
 | Status | Count | Meaning |
 |--------|-------|---------|
-| IMPLEMENTED | 37 | RTL implements the requirement; a testbench exercises it |
+| IMPLEMENTED | 41 | RTL implements the requirement; a testbench exercises it |
 | PARTIAL | 1 | Partially implemented (REQ-IRQ-001) |
-| DEVIATION | 12 | Documented-but-unimplemented or stubbed — see `MICRO_ARCH_SPEC.md` §10 (DEV-001..011) |
+| DEVIATION | 8 | Documented-but-unimplemented or stubbed — see `MICRO_ARCH_SPEC.md` §10 (DEV-003..011; DEV-001/002 now CLOSED) |
 | **Total** | **50** | |
 
 ## Gap analysis vs. audit §1.2 PASS criteria
@@ -45,8 +45,8 @@ The §1.2 PASS bar is: every REQ has ≥1 RTL site, ≥1 test, ≥1 **evidence f
 
 | DEV | REQ rows affected | One-line |
 |-----|-------------------|----------|
-| DEV-001 | REQ-ISA-010/012/013 | core vs decoder opcode maps disagree |
-| DEV-002 | REQ-ISA-011 | POL_UPD id unreachable |
+| ~~DEV-001~~ CLOSED | REQ-ISA-010/012/013 | core vs decoder opcode maps — aligned (DECISION-008) |
+| ~~DEV-002~~ CLOSED | REQ-ISA-011 | POL_UPD now decodes from custom-1 |
 | DEV-003 | REQ-CSR-002 | xcew_status static |
 | DEV-004 | REQ-CSR-010 | 0x7CD–0x7CF not decoded |
 | DEV-005 | REQ-EXC-001 | exception tied 0 |

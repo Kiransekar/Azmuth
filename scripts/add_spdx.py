@@ -25,8 +25,8 @@ MD = {".md"}
 # directories never to touch (generated, vendored, build output)
 SKIP_DIRS = {".git", "build", "runs", "__pycache__", "node_modules",
              "reports", "evidence"}
-# specific generated files to skip
-SKIP_SUFFIX = ("_netlist.v",)
+# specific generated files to skip (not source: emitted by Makefile/flow)
+SKIP_SUFFIX = ("_netlist.v", "/synth.ys")
 
 ROOTS = ["rtl", "tb", "syn", "pnr", "dft", "sim", "sby", "mpw", "bringup",
          "pkg", "golden_tests", "scripts", "flow", "firmware", "toolchain",

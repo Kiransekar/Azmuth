@@ -13,6 +13,12 @@ implementing commit. Bug IDs `BUG-001`..`BUG-027` correspond to the
 ## [Unreleased]
 
 ### Added
+- `docs/MICRO_ARCH_SPEC.md` (audit §1.1, draft) with a Deviations Register
+  (DEV-001..011), `docs/TRACEABILITY.csv`+`.md` (§1.2), `docs/BUG_RETROSPECTIVE.md`
+  (§1.4).
+- `tb/xcie_decoder_tb.v` — directed decoder test (10/10) covering REQ-ISA-010..014.
+- `reports/2026-05-23/synth/SYNTH_QOR_NOTE.md` and `reports/2026-05-23/formal/FORMAL_NOTE.md`
+  — empirical §5.1 / §1.3(c) findings.
 - `LICENSE` — proprietary "All Rights Reserved" license (DECISION-007, audit §0.7).
 - SPDX `LicenseRef-Azmuth-Proprietary` headers across source files (audit §0.7 / §S0.4).
 - `CHANGELOG.md` with requirement/bug/decision traceability (audit §0.6).
@@ -34,6 +40,12 @@ implementing commit. Bug IDs `BUG-001`..`BUG-027` correspond to the
   DECISION-004 path Option 2 (audit §0.4).
 - `README.md` license section updated from "see individual source files" to a
   declared proprietary license.
+
+### Fixed
+- DEV-001/DEV-002: reconciled the Xcew custom opcode map to the standard
+  RISC-V custom-0..3 slots (DECISION-008); `rtl/core/xcie_decoder.v` aligned to
+  the core and POL_UPD made reachable. Resolves the README "1 master" vs "4M×5S"
+  AXI contradiction (§1.3a) in `README.md` / `MICRO_ARCH_SPEC.md` REQ-AXI-001.
 
 ### Removed
 - Duplicate `Claude.md` (case-only collision with `CLAUDE.md`) (audit §0.3).

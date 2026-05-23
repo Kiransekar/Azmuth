@@ -120,3 +120,24 @@ pending team-lead ratification) · `SUPERSEDED` · `DEPRECATED`.
   not an open release. The CC EAL2 and RISC-V compatibility evidence work is
   unaffected (those concern claim-vs-evidence integrity, not license).
 - **Reviewed:** 2026-05-23 (active).
+
+## DECISION-008: Xcew custom opcode map = standard RISC-V custom-0..3
+- **Status:** ACCEPTED
+- **Date:** 2026-05-23
+- **Decided by:** Kiransekar (on RISC-V-standards grounds)
+- **Context:** `MICRO_ARCH_SPEC.md` DEV-001 — `rtl/core/riscv_core.v` (the active
+  datapath) and `rtl/core/xcie_decoder.v` used disjoint Xcew opcode maps. The
+  decoder's map (`1111011`..`1111111`) is non-compliant: `1111111`/`1111110`/
+  `1111101` fall in the space the RISC-V base spec reserves for ≥48/≥80-bit
+  instruction encodings, not the custom space. `xcie_decoder.v` was also found
+  **vestigial** (not instantiated in any RTL/testbench source).
+- **Decision:** The four **standard RISC-V custom opcode slots** are
+  authoritative: custom-0 `0001011` = EML, custom-1 `0101011` = POL_UPD,
+  custom-2 `1011011` = SNN classify, custom-3 `1111011` = MISC (CFG/MLOAD/MSTORE
+  by `funct3`). `xcie_decoder.v` corrected to this map and POL_UPD made reachable
+  (closes DEV-001, DEV-002); directed test `tb/xcie_decoder_tb.v` (10/10).
+- **Consequences:** Decoder and core now agree. `xcie_decoder.v` / `xcie_ctrl.v`
+  remain structurally vestigial relative to the v1.1 datapath (core decodes
+  inline + dispatches via `o_xcew_req`/`i_xcew_done`); wiring them in or removing
+  them is a separate tracked cleanup.
+- **Reviewed:** 2026-05-23 (active).

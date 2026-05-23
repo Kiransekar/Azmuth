@@ -12,10 +12,10 @@ REQ-ISA-005,Conditional branches,rtl/core/riscv_core.v:53,tb/core_tb.v,pending,I
 REQ-ISA-006,JAL/JALR WB=PC+4,rtl/core/riscv_core.v:54,tb/core_tb.v,pending,IMPLEMENTED
 REQ-ISA-007,AUIPC/LUI,rtl/core/riscv_core.v:56,tb/core_tb.v,pending,IMPLEMENTED
 REQ-ISA-008,SYSTEM/Zicsr subset,rtl/core/riscv_core.v:64,tb/core_tb.v,pending,IMPLEMENTED
-REQ-ISA-010,XCEW_EML opcode,rtl/core/riscv_core.v:60;rtl/core/xcie_decoder.v:18,tb/core_tb.v,pending,DEVIATION (DEV-001)
-REQ-ISA-011,XCEW_POL_UPD opcode,rtl/core/riscv_core.v:61,(none),pending,DEVIATION (DEV-002)
-REQ-ISA-012,XCEW_SNN_CLASS opcode,rtl/core/riscv_core.v:62;rtl/core/xcie_decoder.v:22,tb/snn_tile_256_tb.v,pending,DEVIATION (DEV-001)
-REQ-ISA-013,XCEW_MISC/CFG opcode,rtl/core/riscv_core.v:63;rtl/core/xcie_decoder.v:19,tb/core_tb.v,pending,DEVIATION (DEV-001)
+REQ-ISA-010,XCEW_EML opcode custom-0,rtl/core/riscv_core.v:60;rtl/core/xcie_decoder.v,tb/xcie_decoder_tb.v,tb/xcie_decoder_tb.v 10/10,IMPLEMENTED
+REQ-ISA-011,XCEW_POL_UPD opcode custom-1,rtl/core/riscv_core.v:61;rtl/core/xcie_decoder.v,tb/xcie_decoder_tb.v,tb/xcie_decoder_tb.v 10/10,IMPLEMENTED
+REQ-ISA-012,XCEW_SNN_CLASS opcode custom-2,rtl/core/riscv_core.v:62;rtl/core/xcie_decoder.v,tb/xcie_decoder_tb.v,tb/xcie_decoder_tb.v 10/10,IMPLEMENTED
+REQ-ISA-013,XCEW_MISC/CFG opcode custom-3,rtl/core/riscv_core.v:63;rtl/core/xcie_decoder.v,tb/xcie_decoder_tb.v,tb/xcie_decoder_tb.v 10/10,IMPLEMENTED
 REQ-ISA-014,XCEW_MLOAD/MSTORE,rtl/core/xcie_decoder.v:20,tb/core_tb.v,pending,IMPLEMENTED
 REQ-CSR-001,xcew_cfg 0x7C0 RW masked,rtl/core/xcie_csr.v:50,tb/core_tb.v,pending,IMPLEMENTED
 REQ-CSR-002,xcew_status 0x7C1 RO,rtl/core/xcie_csr.v:72,tb/core_tb.v,pending,DEVIATION (DEV-003)

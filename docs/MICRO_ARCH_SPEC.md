@@ -48,20 +48,23 @@ Base: RV32I integer with M and C **claimed** (RV32IMC). Decode opcodes in
 | REQ-ISA-007 | `0010111` / `0110111` | OPCODE_AUIPC / OPCODE_LUI | upper-immediate |
 | REQ-ISA-008 | `1110011` | OPCODE_SYSTEM | CSR access (Zicsr subset) |
 
-**Xcew custom instructions** — the core and the standalone decoder use
-**different** opcode maps (DEV-001):
+**Xcew custom instructions** — as of DECISION-008 the **standard RISC-V
+custom-0..3** opcodes are authoritative and `xcie_decoder.v` has been aligned to
+the core (DEV-001 CLOSED). The decoder column below now matches the core column;
+historical divergence is kept for context:
 
-| ID | Mnemonic | `riscv_core.v` opcode | `xcie_decoder.v` opcode | Xcew ID |
-|----|----------|----------------------|-------------------------|---------|
-| REQ-ISA-010 | XCEW_EML | `0001011` | `1111011` | 1 |
-| REQ-ISA-011 | XCEW_POL_UPD | `0101011` | — (none) | 6 |
-| REQ-ISA-012 | XCEW_SNN_CLASS | `1011011` | `1111111` | 5 |
-| REQ-ISA-013 | XCEW_MISC/CFG | `1111011` | `1111100` | 2 |
-| REQ-ISA-014 | XCEW_MLOAD / MSTORE | (via MISC) | `1111101` / `1111110` | 3 / 4 |
+| ID | Mnemonic | `riscv_core.v` opcode | `xcie_decoder.v` opcode (aligned) | Xcew ID |
+|----|----------|----------------------|-----------------------------------|---------|
+| REQ-ISA-010 | XCEW_EML | `0001011` (custom-0) | `0001011` | 1 |
+| REQ-ISA-011 | XCEW_POL_UPD | `0101011` (custom-1) | `0101011` | 6 |
+| REQ-ISA-012 | XCEW_SNN_CLASS | `1011011` (custom-2) | `1011011` | 5 |
+| REQ-ISA-013 | XCEW_MISC/CFG | `1111011` (custom-3) | `1111011` funct3=0 | 2 |
+| REQ-ISA-014 | XCEW_MLOAD / MSTORE | `1111011` + funct3 | `1111011` funct3=1/2 | 3 / 4 |
 
-The decoder defines Xcew ID 6 (POL_UPD) but **no opcode maps to it**, so the
-POL_UPD path is unreachable through `xcie_decoder` (DEV-002). M and C extension
-coverage is unproven (no RISCOF run — tapeout audit §2.4).
+Per DECISION-008 the decoder is now aligned to the core's standard custom-0..3
+map; POL_UPD (ID 6) decodes from custom-1 (DEV-002 CLOSED). `xcie_decoder.v`
+itself remains vestigial (the core decodes inline). M and C extension coverage
+is still unproven (no RISCOF run — tapeout audit §2.4).
 
 ## 3. CSR map (`REQ-CSR-*`)
 
@@ -152,8 +155,8 @@ these should be presented to adopters as working until closed.**
 
 | ID | Deviation | Evidence | Disposition |
 |----|-----------|----------|-------------|
-| DEV-001 | Core and `xcie_decoder` use disjoint Xcew opcode maps (only `1111011` overlaps). | `riscv_core.v:60-63` vs `xcie_decoder.v:18-22` | Reconcile to one map; gates correct Xcew dispatch. Blocks software audit §S1.2. |
-| DEV-002 | Xcew ID 6 (POL_UPD) decodes from no opcode. | `xcie_decoder.v:30` (defined), no case | Add an opcode or remove the ID. |
+| DEV-001 | ~~Core and `xcie_decoder` use disjoint Xcew opcode maps.~~ **RESOLVED** (DECISION-008): decoder aligned to the standard custom-0..3 map (matches core). Test `tb/xcie_decoder_tb.v`. Note `xcie_decoder` remains vestigial (not instantiated). | `xcie_decoder.v:17-` | CLOSED |
+| DEV-002 | ~~Xcew ID 6 (POL_UPD) decodes from no opcode.~~ **RESOLVED**: POL_UPD now decodes from custom-1 `0101011`. | `xcie_decoder.v` | CLOSED |
 | DEV-003 | `xcew_status` (0x7C1) in `xcie_csr.v` is a static register, never driven by live status. | `xcie_csr.v:72` | Wire real status; top partially compensates for bit[3] only. |
 | DEV-004 | CSRs 0x7CD/0x7CE/0x7CF (watchdog_timeout, ecc_scrub/corrected counts) are documented but not decoded at the top. | absent in `xcew_top_v1_1.v` write case | Implement or strike from README/CSR map. |
 | DEV-005 | `riscv_core.exception` hardwired to 0. | `riscv_core.v:491` | No synchronous exceptions raised. |
