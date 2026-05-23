@@ -1,0 +1,53 @@
+REQ-ID,Description,RTL file:line,Test,Evidence,Status
+REQ-PIPE-001,3-stage IF/ID-EX/WB pipeline,rtl/core/riscv_core.v,tb/core_tb.v;tb/cosim_tb.v,reports/latest pending,IMPLEMENTED
+REQ-PIPE-002,Branch/jump target computation + PC mux,rtl/core/riscv_core.v,tb/core_tb.v;tb/cosim_tb.v,pending,IMPLEMENTED
+REQ-PIPE-003,Xcew stall until unit done,rtl/core/riscv_core.v;rtl/core/xcie_ctrl.v,tb/core_tb.v,pending,IMPLEMENTED
+REQ-PIPE-004,Register file 32x32, x0=0,rtl/core/riscv_core.v,tb/core_tb.v,pending,IMPLEMENTED
+REQ-PIPE-005,Writeback source mux (ALU/load/CSR/PC+4),rtl/core/riscv_core.v,tb/core_tb.v,pending,IMPLEMENTED
+REQ-ISA-001,R-type ALU,rtl/core/riscv_core.v:49,tb/core_tb.v;tb/cosim_tb.v,pending,IMPLEMENTED
+REQ-ISA-002,I-type ALU-imm,rtl/core/riscv_core.v:50,tb/core_tb.v,pending,IMPLEMENTED
+REQ-ISA-003,Loads w/ byte-enable,rtl/core/riscv_core.v:51,tb/core_tb.v,pending,IMPLEMENTED
+REQ-ISA-004,Stores w/ mem_wstrb per funct3,rtl/core/riscv_core.v:52,tb/core_tb.v,pending,IMPLEMENTED
+REQ-ISA-005,Conditional branches,rtl/core/riscv_core.v:53,tb/core_tb.v,pending,IMPLEMENTED
+REQ-ISA-006,JAL/JALR WB=PC+4,rtl/core/riscv_core.v:54,tb/core_tb.v,pending,IMPLEMENTED
+REQ-ISA-007,AUIPC/LUI,rtl/core/riscv_core.v:56,tb/core_tb.v,pending,IMPLEMENTED
+REQ-ISA-008,SYSTEM/Zicsr subset,rtl/core/riscv_core.v:64,tb/core_tb.v,pending,IMPLEMENTED
+REQ-ISA-010,XCEW_EML opcode,rtl/core/riscv_core.v:60;rtl/core/xcie_decoder.v:18,tb/core_tb.v,pending,DEVIATION (DEV-001)
+REQ-ISA-011,XCEW_POL_UPD opcode,rtl/core/riscv_core.v:61,(none),pending,DEVIATION (DEV-002)
+REQ-ISA-012,XCEW_SNN_CLASS opcode,rtl/core/riscv_core.v:62;rtl/core/xcie_decoder.v:22,tb/snn_tile_256_tb.v,pending,DEVIATION (DEV-001)
+REQ-ISA-013,XCEW_MISC/CFG opcode,rtl/core/riscv_core.v:63;rtl/core/xcie_decoder.v:19,tb/core_tb.v,pending,DEVIATION (DEV-001)
+REQ-ISA-014,XCEW_MLOAD/MSTORE,rtl/core/xcie_decoder.v:20,tb/core_tb.v,pending,IMPLEMENTED
+REQ-CSR-001,xcew_cfg 0x7C0 RW masked,rtl/core/xcie_csr.v:50,tb/core_tb.v,pending,IMPLEMENTED
+REQ-CSR-002,xcew_status 0x7C1 RO,rtl/core/xcie_csr.v:72,tb/core_tb.v,pending,DEVIATION (DEV-003)
+REQ-CSR-003,snn_ctrl_ext 0x7C5,rtl/xcew_top_v1_1.v:347,tb/xcew_top_v1_1_tb.v,pending,IMPLEMENTED
+REQ-CSR-004,eml_dag_ctl 0x7C6,rtl/xcew_top_v1_1.v:348,tb/eml_dag_tb.v,pending,IMPLEMENTED
+REQ-CSR-005,pwr_ctrl 0x7C8,rtl/xcew_top_v1_1.v:349,tb/power_orch_tb.v,pending,IMPLEMENTED
+REQ-CSR-006,bias_ctrl 0x7C9,rtl/xcew_top_v1_1.v:350,tb/power_orch_tb.v,pending,IMPLEMENTED
+REQ-CSR-007,sec_ctrl 0x7CA,rtl/xcew_top_v1_1.v:351,tb/security_tb.v,pending,IMPLEMENTED
+REQ-CSR-008,pol_sec 0x7CB,rtl/xcew_top_v1_1.v:352,tb/security_tb.v,pending,IMPLEMENTED
+REQ-CSR-009,fault_status 0x7CC W1C,rtl/xcew_top_v1_1.v:353,tb/security_tb.v,pending,IMPLEMENTED
+REQ-CSR-010,0x7CD-0x7CF watchdog/ecc counts,(none),(none),pending,DEVIATION (DEV-004)
+REQ-FSM-001,8-state Xcew control FSM,rtl/core/xcie_ctrl.v:30,tb/core_tb.v,pending,IMPLEMENTED
+REQ-FSM-002,DECODE routing by xcew_id,rtl/core/xcie_ctrl.v:60,tb/core_tb.v,pending,IMPLEMENTED
+REQ-FSM-003,EXE_EML/SNN/NVM completion waits,rtl/core/xcie_ctrl.v:77,tb/core_tb.v,pending,IMPLEMENTED
+REQ-FSM-004,EXE_CFG single-cycle,rtl/core/xcie_ctrl.v:84,tb/core_tb.v,pending,IMPLEMENTED
+REQ-FSM-005,TRAP asserts exc+irq,rtl/core/xcie_ctrl.v:171,tb/core_tb.v,pending,IMPLEMENTED
+REQ-FSM-006,EXE_MEMO no completion wait,rtl/core/xcie_ctrl.v:88,(none),pending,DEVIATION (DEV-006)
+REQ-MEM-001,Boot ROM s0 read-only,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,pending,IMPLEMENTED
+REQ-MEM-002,SRAM s1 R/W,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,pending,IMPLEMENTED
+REQ-MEM-003,EML CSR s2,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,pending,IMPLEMENTED
+REQ-MEM-004,SNN CSR s3,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,pending,IMPLEMENTED
+REQ-MEM-005,NVM CSR s4,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v;tb/nvm_tb.v,pending,IMPLEMENTED
+REQ-AXI-001,4 master x 5 slave fixed-priority,rtl/soc/axi_lite_interconnect_v1_1.v:10,tb/axi_lite_interconnect_v1_1_tb.v,pending,IMPLEMENTED (resolves 1.3a)
+REQ-AXI-002,Only m0=core active; m1-m3 reserved,rtl/xcew_top_v1_1.v:407,tb/soc_tb.v,pending,IMPLEMENTED
+REQ-AXI-003,Interconnect active-low aresetn,rtl/xcew_top_v1_1.v,tb/soc_tb.v,pending,IMPLEMENTED
+REQ-IRQ-001,IRQ outputs eml/snn/nvm/fault/timeout,rtl/xcew_top_v1_1.v:14,tb/security_tb.v,pending,PARTIAL
+REQ-IRQ-002,Only fault IRQ live; others tied 0,rtl/xcew_top_v1_1.v:801,(none),pending,DEVIATION (DEV-008)
+REQ-EXC-001,exception hardwired 0,rtl/core/riscv_core.v:491,(none),pending,DEVIATION (DEV-005)
+REQ-EXC-002,No machine trap CSRs/privilege,rtl/core/riscv_core.v,(none),pending,DEVIATION (DEV-009)
+REQ-RST-001,Active-high i_rst; AXI active-low,rtl/core/riscv_core.v,tb/soc_tb.v,pending,DEVIATION (DEV-010)
+REQ-PWR-001,Per-tile RUN/SLEEP FSM,rtl/power/orchestrator.v,tb/power_orch_tb.v,pending,IMPLEMENTED
+REQ-PWR-002,Gated clocks per tile + wake,rtl/xcew_top_v1_1.v:509,tb/power_orch_tb.v,pending,IMPLEMENTED
+REQ-PWR-003,Body-bias DAC + calibration FSM,rtl/power/body_bias_ctrl.v,tb/power_orch_tb.v,pending,IMPLEMENTED
+REQ-CDC-001,Two clocks core 250/snn 125 MHz,rtl/xcew_top_v1_1.v:10,(none),pending,IMPLEMENTED
+REQ-CDC-002,Core<->snn CDC inventory,(none),(none),pending,DEVIATION (DEV-011)

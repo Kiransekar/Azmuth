@@ -38,7 +38,7 @@ The Xcew Processor extends the standard **RV32IMC** instruction set with custom 
 - **Power Orchestration** — Per-tile sleep/wake FSM with retention registers and body-bias control
 - **Security** — Watchdog, fault monitor, constant-time EML operations, ECC scrubbing
 
-The v1.1 top-level module (`xcew_top_v1_1`) integrates all components under an **AXI4-Lite interconnect** with 1 master (Core) and 5 slaves (Boot ROM, SRAM, EML CSR, SNN CSR, NVM CSR).
+The v1.1 top-level module (`xcew_top_v1_1`) integrates all components under an **AXI4-Lite interconnect** structured as **4 master ports × 5 slave ports** (Boot ROM, SRAM, EML CSR, SNN CSR, NVM CSR) with fixed-priority arbitration. In v1.1 only master port `m0` (the RISC-V core) is actively driven; `m1`–`m3` are reserved (tied off) for future masters such as the Debug Module. This resolves the earlier "1 master" vs "4M × 5S" inconsistency (see `docs/MICRO_ARCH_SPEC.md` REQ-AXI-001/002): the 4M×5S structure is ground truth; only one master is active. The previous prose claiming a single master port was incorrect.
 
 ---
 

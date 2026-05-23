@@ -9,7 +9,22 @@ what remains, and why remaining items are blocked.
 _Last updated: 2026-05-23. Changes are in the working tree; commit hashes to be
 filled when committed (audit convention: `- [x] (commit abc1234)`)._
 
-## Done this pass — Section 0 + governance (Foundation)
+## Section 1 — Spec & Traceability (slice 2)
+
+| Item | Gate | Status | What landed |
+|------|------|--------|-------------|
+| Tapeout 1.1 | HARD | **drafted** | `docs/MICRO_ARCH_SPEC.md` — REQ-* ids across pipeline/ISA/CSR/FSM/mem/AXI/IRQ/exc/rst/pwr/cdc + a **Deviations Register (DEV-001..011)** of documented-but-unimplemented behavior. Sign-off + exhaustive per-instruction semantics pending. |
+| Tapeout 1.2 | HARD | **drafted** | `docs/TRACEABILITY.csv` + `.md` — 50 REQs → RTL site + test (37 IMPLEMENTED, 1 PARTIAL, 12 DEVIATION). Evidence column `pending` (needs §2). |
+| Tapeout 1.3(a) | HARD | **resolved** | AXI master count: RTL is **4 master × 5 slave**, only `m0` (core) active; README prose corrected. (b) TTFS energy + (c) SBY proofs still open. |
+| Tapeout 1.4 | EVIDENCE | **done** | `docs/BUG_RETROSPECTIVE.md` — 27 bugs categorized, ~20 spec-preventable, gates G1–G7. |
+
+**Key finding (honest):** writing the spec against the RTL surfaced 11 live
+deviations — most importantly the core has **no machine trap CSRs / privilege
+model**, `exception` is tied to 0, and 3 of 4 IRQs are tied off. These block
+RISCOF privilege/Zicsr (§2.4) and trap-handler firmware (§S2.5) and are recorded
+as DEV-005/008/009 rather than presented as working.
+
+## Done — Section 0 + governance (Foundation, slice 1)
 
 | Item | Gate | What landed |
 |------|------|-------------|
@@ -50,14 +65,21 @@ virtualization, EML cache compression, parameterization), 3.5 (~3–5k lines
 Debug Module + JTAG DTM), 2.x/3.x/4.x verification campaigns; Software S2 boot
 ROM, S4 libxcew + DSL/converters, S5 OpenOCD/GDB, S6 8 examples.
 
-**Spec/evidence authoring (doable next, no tools):** Tapeout 1.1 MICRO_ARCH_SPEC,
-1.2 TRACEABILITY, 1.4 bug retrospective, 3.1/3.2 CDC/RDC analysis docs, 4.6/4.7
-CC Security Target + Vulnerability Analysis, 2.1 verification plan; Software
-S0.1 toolchain layout, S1.6 patch strategy, S4.5 programming model, S7.4 ABI,
-S8.1/S8.2/S8.4 release/compat/maintenance docs.
+**Spec/evidence authoring (doable next, no tools):** ~~1.1 MICRO_ARCH_SPEC, 1.2
+TRACEABILITY, 1.4 retrospective~~ (done this slice); remaining: 3.1/3.2 CDC/RDC
+analysis docs, 4.6/4.7 CC Security Target + Vulnerability Analysis, 2.1
+verification plan; Software S0.1 toolchain layout, S1.6 patch strategy, S4.5
+programming model, S7.4 ABI, S8.1/S8.2/S8.4 release/compat/maintenance docs.
 
 ## Suggested next slice
-Spec-and-evidence authoring requires no toolchain and unblocks downstream
-traceability: `docs/MICRO_ARCH_SPEC.md` (1.1) + `docs/TRACEABILITY.csv` (1.2),
-then `docs/DECISIONS.md` ratification (flip 001/002/003/006 to ACCEPTED) and
-the Section 1.5 RTL refactors (which I can write and lint locally with iverilog).
+Two tracks, both unblocked:
+1. **Close the deviations (highest value):** the DEV-001..011 register exposes
+   real RTL gaps. DEV-001 (opcode-map reconciliation), DEV-002 (POL_UPD), DEV-006
+   (EXE_MEMO wait) are small, local RTL fixes I can write + lint with iverilog
+   and add directed tests for. DEV-005/008/009 (exceptions, IRQ wiring, trap CSRs)
+   are larger and gate RISCOF.
+2. **More evidence docs (no tools):** §2.1 verification plan, §3.1 CDC analysis,
+   §4.6/4.7 CC Security Target + Vulnerability Analysis.
+
+Tools (verilator/iverilog/yosys/sby) are present, so §5 synth QoR and §1.3(c)
+formal proofs are also now runnable here if prioritized.

@@ -160,7 +160,8 @@ Backfill from existing git history for v1.1. Future entries written per PR.
 
 **Why critical:** The 27-bug list is itself the strongest argument for this section. Each bug existed because implementation had no spec to check against. CC EAL2 `ADV_FSP` (functional specification) and any DO-254-style traceability claim depend on this work.
 
-### 1.1 [ ] HARD GATE — Micro-architecture specification
+### 1.1 [~] HARD GATE — Micro-architecture specification
+> _Drafted at `docs/MICRO_ARCH_SPEC.md` (REQ-* ids + DEV-* deviations register). NOT yet PASS: needs review + team-lead sign-off, and a few sections (full per-instruction RV32IMC semantics, detailed reset sequence) are summarized rather than exhaustive._
 
 **Action:** Create `docs/MICRO_ARCH_SPEC.md`. Required content:
 
@@ -180,7 +181,8 @@ Every paragraph gets a requirement ID: `REQ-PIPE-NNN`, `REQ-ISA-NNN`, `REQ-CSR-N
 **FAIL:** RTL has features not in spec, or spec has features not in RTL.
 **Owner:** Pair A
 
-### 1.2 [ ] HARD GATE — Requirements traceability matrix
+### 1.2 [~] HARD GATE — Requirements traceability matrix
+> _Drafted at `docs/TRACEABILITY.csv` + `docs/TRACEABILITY.md` (50 REQs → RTL site + test). NOT yet PASS: Evidence column is `pending` for all rows (no committed waveform/log artifacts yet — needs §2 verification campaign), and tests are not yet back-annotated with REQ-ids._
 
 **Action:** Create `docs/TRACEABILITY.csv` (machine-readable) plus `docs/TRACEABILITY.md` (human-readable view).
 
@@ -200,7 +202,8 @@ Every test traces back to a REQ-ID. Every non-trivial block of RTL traces back t
 **FAIL:** Orphan RTL or orphan tests exceeding 5%, or any REQ without test coverage.
 **Owner:** Pair A drives, Pair B owns test column
 
-### 1.3 [ ] HARD GATE — Resolve known specification deviations
+### 1.3 [~] HARD GATE — Resolve known specification deviations
+> _(a) AXI master count RESOLVED: RTL is 4 master × 5 slave (only m0 active); README prose corrected; see MICRO_ARCH_SPEC REQ-AXI-001/002. (b) TTFS energy ≥40% and (c) SBY proofs remain OPEN (need measurement / SymbiYosys run)._
 
 Three specific items, all already known:
 
@@ -224,7 +227,8 @@ CC EAL2 doesn't require formal proof but does require honest claim-vs-evidence a
 **PASS:** All three resolved with evidence committed.
 **Owner:** (a) Pair A; (b) Pair B + Pair C; (c) Pair C.
 
-### 1.4 [ ] EVIDENCE — Bug retrospective
+### 1.4 [x] EVIDENCE — Bug retrospective
+> _Done: `docs/BUG_RETROSPECTIVE.md` — 27 bugs categorized, ~20/27 assessed spec-preventable, 7 review gates (G1–G7) defined._
 
 The 27-bug list is itself a process artifact. Produce `docs/BUG_RETROSPECTIVE.md` analyzing:
 
