@@ -24,6 +24,18 @@ model**, `exception` is tied to 0, and 3 of 4 IRQs are tied off. These block
 RISCOF privilege/Zicsr (§2.4) and trap-handler firmware (§S2.5) and are recorded
 as DEV-005/008/009 rather than presented as working.
 
+## Slice 4 — verification plan + CDC analysis
+
+| Item | Status | What landed |
+|------|--------|-------------|
+| Tapeout 2.1 | **drafted** | `docs/VERIFICATION_PLAN.md` — per-feature strategy + coverpoints + cross-coverage mapped to REQ-* and the 14 testbenches. NOT PASS: coverage unmeasured (§2.2 open). |
+| Tapeout 3.1 | **analysis done — FAIL** | `docs/CDC_ANALYSIS.md` — core↔SNN crossings C1–C8 inventoried; **no synchronizers exist** (confirms DEV-011). Fix patterns + MTBF method given. |
+
+**Key finding:** the only true CDC boundary (core 250 MHz ↔ SNN 125 MHz) is
+**entirely unsynchronized** — multi-bit config/data/results cross between
+asynchronous clocks with no 2-FF/handshake. Passes in zero-delay sim, would be
+intermittently broken on silicon.
+
 ## Slice 3 — deviation closure + tool-run evidence
 
 | Item | Status | What landed |

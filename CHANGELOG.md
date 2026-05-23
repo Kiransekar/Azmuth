@@ -13,6 +13,8 @@ implementing commit. Bug IDs `BUG-001`..`BUG-027` correspond to the
 ## [Unreleased]
 
 ### Added
+- `docs/VERIFICATION_PLAN.md` (audit §2.1, draft) and `docs/CDC_ANALYSIS.md`
+  (§3.1) — the latter finds the core↔SNN crossing is unsynchronized (DEV-011).
 - `docs/MICRO_ARCH_SPEC.md` (audit §1.1, draft) with a Deviations Register
   (DEV-001..011), `docs/TRACEABILITY.csv`+`.md` (§1.2), `docs/BUG_RETROSPECTIVE.md`
   (§1.4).

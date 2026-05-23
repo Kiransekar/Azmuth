@@ -395,7 +395,8 @@ Reviewed: YYYY-MM-DD (active)
 
 **Why:** "82 unit + 8 integration tests passing" is a count, not a coverage statement. Counts don't satisfy auditors. Functional coverage against a written plan does. CC EAL2 `ATE_FUN` and `ATE_COV` evidence both live here.
 
-### 2.1 [ ] HARD GATE — Verification plan document
+### 2.1 [~] HARD GATE — Verification plan document
+> _Drafted at `docs/VERIFICATION_PLAN.md` (per-feature strategy, coverpoints, cross-coverage, mapped to REQ-* + the 14 testbenches). NOT yet PASS: coverage is not yet measured (§2.2 open) and several coverpoints are blocked by DEV-005/008/009/011._
 
 **Action:** Create `docs/VERIFICATION_PLAN.md`. Content:
 
@@ -483,7 +484,8 @@ Each test references Python golden-model outputs.
 
 **Why:** These are the failure modes that pass unit tests but kill chips. They also pass at simulation if you don't deliberately model them.
 
-### 3.1 [ ] HARD GATE — Clock domain crossing verification
+### 3.1 [~] HARD GATE — Clock domain crossing verification
+> _Analysis done at `docs/CDC_ANALYSIS.md` (crossings C1–C8 inventoried). Result is FAIL: the core↔SNN crossing has **no synchronizers** in v1.1 RTL (DEV-011) — fix patterns + MTBF method specified; closing needs synchronizer insertion + a randomized-phase CDC testbench._
 
 **Current state:** Two clock domains: `i_clk_core` (250 MHz) and `i_clk_snn` (125 MHz). No CDC analysis on file.
 
