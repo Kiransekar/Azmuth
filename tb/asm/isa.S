@@ -48,5 +48,17 @@ _start:
     bgeu x1, x2, 3f          # 0xFFFFFFFF >=u 1 -> taken
     li   x22, 0xBAD
 3:
+    # --- AUIPC (pc-relative): two auipc 4 bytes apart differ by 4 ---
+    auipc x23, 0
+    auipc x24, 0
+    sub   x25, x24, x23      # x25 = 4
+
+    # --- JALR with offset: jump P+16, skipping two instrs ---
+    auipc x26, 0             # x26 = P
+    jalr  x27, 16(x26)       # target = P+16 ; x27 = link (P+8)
+    addi  x28, x0, 0xAA      # P+8  skipped
+    addi  x28, x0, 0xBB      # P+12 skipped
+    addi  x29, x0, 0x77      # P+16 target -> executes
+
 done:
     j done

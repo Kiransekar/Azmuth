@@ -69,6 +69,9 @@ module isa_tb;
         chk("BGE flush",     20, 32'h00000111);
         chk("BLTU flush",    21, 32'h00000222);
         chk("BGEU flush",    22, 32'h00000333);
+        chk("auipc pc-rel d4",25, 32'd4);
+        chk("jalr skip->P+16",29, 32'h00000077);
+        chk("jalr skipped x28",28, 32'h00000000);
         if (exception) begin $display("FAIL: unexpected exception"); errors=errors+1; end
         $display("\n=== isa_tb: %0d error(s) ===", errors);
         if (errors != 0) $fatal(1, "isa test failed");

@@ -202,9 +202,9 @@ module riscv_core (
         input [6:0]  opcode;
         begin
             case (opcode)
-                OPCODE_ITYPE, OPCODE_LTYPE:  // I-type immediate (ALU-imm and loads)
-                    // BUG-029: OPCODE_LTYPE was missing, so load offsets were
-                    // always 0 (fell through to default).
+                OPCODE_ITYPE, OPCODE_LTYPE, OPCODE_JALR:  // I-type immediate (ALU-imm, loads, JALR)
+                    // BUG-029: LTYPE was missing (load offsets always 0).
+                    // BUG-034: JALR was missing (JALR offset always 0).
                     generate_imm = { {20{instr[31]}}, instr[31:20] };
                 OPCODE_STYPE:  // S-type immediate
                     generate_imm = { {20{instr[31]}}, instr[31:25], instr[11:7] };
@@ -418,6 +418,7 @@ module riscv_core (
                      is_load ? mem_rdata :
                      ((id_ex_instr[6:0] == OPCODE_JAL) || (id_ex_instr[6:0] == OPCODE_JALR)) ? id_ex_pc + 32'h4 :
                      (id_ex_instr[6:0] == OPCODE_LUI) ? id_imm :
+                     (id_ex_instr[6:0] == OPCODE_AUIPC) ? (id_ex_pc + id_imm) : // BUG-033: was ALU garbage
                      alu_result;
 
     // Register file writeback
