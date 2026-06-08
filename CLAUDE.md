@@ -16,6 +16,8 @@ There are **two top-levels**: `rtl/xcew_top_v1_1.v` (current, the build default 
 ```bash
 make lint              # Verilator lint --top xcew_top_v1_1 (many -Wno-* suppressed); falls back to iverilog
 make sim_core          # Unit sim: tb/core_tb.v   (iverilog + vvp)
+make sim_isa / sim_hazard / sim_trap / sim_irq / sim_decoder
+                       # Directed RV32I + Zicsr/trap core tests (found 6 real core bugs; see CHANGELOG)
 make sim_eml           # Unit sim: tb/eml_tb.v
 make sim_soc           # SoC integration sim
 make sim_top           # Top-level sim
@@ -28,6 +30,7 @@ make firmware          # riscv64-unknown-elf-gcc → firmware/build/firmware.{el
 make verilator         # Build Verilator C++ cosim model
 make cosim             # Firmware + Verilator cosim
 make verify            # Full v1.1 pipeline → scripts/verify_v1.1.sh
+flow/compliance_archtest.sh   # Differential RISC-V arch-test vs Spike — rv32i_m/I passes 38/38 byte-identical
 make check_csr_v1.1    # Detect CSR address collisions
 make signoff_v1.1      # Unified signoff (STA + DFT + security)
 make pnr               # OpenROAD place & route
@@ -48,7 +51,7 @@ Some testbenches pair with `tb/*_stub.v` (e.g. `riscv_core_stub.v`, `eml_dag_cac
 
 ```
 xcew_top_v1_1
-├── riscv_core              rtl/core/riscv_core.v — 3-stage in-order (IF → ID/EX → WB); stalls on Xcew instr until i_xcew_done
+├── riscv_core              rtl/core/riscv_core.v — 3-stage in-order (IF → ID/EX → WB); stalls on Xcew instr until i_xcew_done. M-mode traps (Zicsr CSRs mstatus/mie/mip/mtvec/mepc/mcause/mtval/mscratch, sync exceptions, i_meip/i_mtip/i_msip, mret), gated on mtvec != 0 (DECISION-009)
 │   ├── xcie_decoder        opcode → xcew_id
 │   ├── xcie_csr            xcew_cfg 0x7C0 / xcew_status 0x7C1
 │   ├── xcie_ctrl           FSM: IDLE→DECODE→EXE_{EML,CFG,MEMO,SNN,NVM}→WB/TRAP
@@ -84,11 +87,11 @@ Flow stages are driven via single entry points in `flow/` (`lint.sh`, `sim.sh`, 
 
 ## Known gotchas (verified current)
 
-1. **Decoder vs core opcode mismatch (real, unresolved):** `xcie_decoder.v` uses Xcew opcodes `7'b1111011`–`7'b1111111`, but `riscv_core.v` decodes `XCEW_EML = 7'b0001011` (and other custom-space values). Instruction routing depends on which one is authoritative — reconcile before trusting Xcew dispatch.
+1. **Decoder/core opcode map — RECONCILED (was a mismatch):** as of DEV-001/002 (DECISION-008), `xcie_decoder.v` and `riscv_core.v` agree on the standard RISC-V custom-0..3 map — `XCEW_EML=7'b0001011`, `POL_UPD=7'b0101011`, `SNN=7'b1011011`, `MISC=7'b1111011` — and POL_UPD is now reachable. Earlier docs/comments describing a `1111011`–`1111111` decoder range are stale. Verified by `tb/xcie_decoder_tb.v` (10/10).
 2. **No liberty file:** synthesis references `syn/130nm_std.lib`, which does not exist; `synth_final.tcl` proceeds without it (generic mapping only). Real timing/area numbers require a PDK lib.
 3. **`tb/top_tb.v` port drift:** historically declared ports that don't match the current top's AXI/debug-UART interface — check before assuming `sim_top` exercises the real top.
 4. **`cosim_v1.1` is partly mock** (generates JSON reports); use `make sim_cosim` for an actual self-contained simulation, or `make verilator && make cosim` for the real Verilator path.
-5. **Stray giant VCDs in repo root** (e.g. a multi-GB `eml_tb.vcd`) — simulations dump VCDs to the working dir. Don't open them blindly; `.gitignore` covers `*.vcd`. Delete stale ones if disk pressure appears.
+5. **VCDs land in the repo root** — sims dump `*_tb.vcd` to the working dir (currently a handful at <600 KB each; some past runs were much larger). Don't open them blindly; `.gitignore` covers `*.vcd`. Delete stale ones if disk pressure appears.
 
 ## Docs worth reading
 

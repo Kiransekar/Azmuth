@@ -28,6 +28,8 @@ module snn_tile_256 #(
     output reg  [15:0] o_conf,            // Confidence (spike count / timing)
     output reg         o_done,
     output wire        o_ready,
+    output wire [2:0]  o_dbg_state,
+    output wire [8:0]  o_dbg_scan_counter,
 
     // Spike outputs for STDP integration
     output wire [NUM_NEURONS-1:0] o_spike_outs,
@@ -97,7 +99,8 @@ module snn_tile_256 #(
     localparam SCAN       = 3'b011;  // Scan neurons for winner
     localparam DONE_STATE = 3'b100;
 
-    reg [2:0] current_state, next_state;
+    reg [2:0] snn_current_state;
+    reg [2:0] next_state;
     reg [IDX_W-1:0] scan_idx;
     reg [IDX_W:0]   scan_counter;     // One extra bit to count up to NUM_NEURONS
     reg [IDX_W:0]   load_counter;     // Count loaded neurons
@@ -123,7 +126,9 @@ module snn_tile_256 #(
         endcase
     end
 
-    assign o_ready = (current_state == IDLE);
+    assign o_ready = (snn_current_state == IDLE);
+    assign o_dbg_state = snn_current_state;
+    assign o_dbg_scan_counter = {{(8-IDX_W){1'b0}}, scan_counter};
     assign o_spike_outs = spike_outs_vec;
     assign o_spike_valids = spike_valids_vec;
 
@@ -131,7 +136,7 @@ module snn_tile_256 #(
     integer si;
     always @(posedge i_clk_snn or posedge i_rst) begin
         if (i_rst) begin
-            current_state <= IDLE;
+            snn_current_state <= IDLE;
             scan_idx <= {IDX_W{1'b0}};
             scan_counter <= {IDX_W+1{1'b0}};
             load_counter <= {IDX_W+1{1'b0}};
@@ -148,10 +153,10 @@ module snn_tile_256 #(
                 spike_counts[si] <= 16'd0;
             end
         end else begin
-            current_state <= next_state;
+            snn_current_state <= next_state;
             o_done <= 1'b0;
 
-            case (current_state)
+            case (snn_current_state)
                 IDLE: begin
                     scan_idx <= {IDX_W{1'b0}};
                     scan_counter <= {IDX_W+1{1'b0}};
@@ -214,8 +219,8 @@ module snn_tile_256 #(
 
     // Combinational next-state logic
     always @(*) begin
-        next_state = current_state;
-        case (current_state)
+        next_state = snn_current_state;
+        case (snn_current_state)
             IDLE: begin
                 if (i_classify_en)
                     next_state = LOAD;

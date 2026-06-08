@@ -465,6 +465,8 @@ module xcew_top (
         .o_conf(),
         .o_done(),
         .o_ready(),
+        .o_dbg_state(),
+        .o_dbg_scan_counter(),
         .o_spike_outs(),
         .o_spike_valids()
     );

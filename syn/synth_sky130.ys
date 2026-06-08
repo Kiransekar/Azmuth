@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary
+# Yosys synthesis script for Azmuth v1.1 → SKY130 HD
+# Audit reference: Tapeout §5.1–5.4
+
+# Read RTL
+read_verilog rtl/core/riscv_core.v
+read_verilog rtl/core/xcie_csr.v
+read_verilog rtl/core/xcie_ctrl.v
+read_verilog rtl/core/xcie_decoder.v
+read_verilog rtl/core/policy_determinism.v
+read_verilog rtl/eml/eml_unit.v
+read_verilog rtl/eml/eml_constant_time.v
+read_verilog rtl/eml/eml_dag_cache.v
+read_verilog rtl/eml/eml_dag_scheduler.v
+read_verilog rtl/nvm/nvm_ctrl.v
+read_verilog rtl/power/body_bias_ctrl.v
+read_verilog rtl/power/orchestrator.v
+read_verilog rtl/security/fault_monitor.v
+read_verilog rtl/snn/lif_ttfs_neuron_v1_1.v
+read_verilog rtl/snn/snn_tile.v
+read_verilog rtl/snn/snn_tile_256.v
+read_verilog rtl/snn/stdp_engine.v
+read_verilog rtl/snn/stdp_engine_v1_1.v
+read_verilog rtl/soc/axi_lite_interconnect_v1_1.v
+read_verilog rtl/xcew_top_v1_1.v
+
+# Hierarchy
+hierarchy -top xcew_top_v1_1 -check
+
+# Synthesis
+synth -top xcew_top_v1_1 -flatten
+
+# Technology mapping to SKY130 HD
+dfflibmap -liberty /home/kiran-sekar/OpenROAD/test/sky130hd/sky130_fd_sc_hd__tt_025C_1v80.lib
+abc -liberty /home/kiran-sekar/OpenROAD/test/sky130hd/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+# Clean up
+clean -purge
+opt_clean -purge
+
+# Statistics
+stat -liberty /home/kiran-sekar/OpenROAD/test/sky130hd/sky130_fd_sc_hd__tt_025C_1v80.lib
+
+# Write netlist
+write_verilog -noattr syn/azmuth_sky130_netlist.v

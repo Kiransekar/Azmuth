@@ -642,6 +642,8 @@ module xcew_top_v1_1 (
         .o_conf(snn_conf_int),
         .o_done(snn_done_int),
         .o_ready(snn_ready_int),
+        .o_dbg_state(),
+        .o_dbg_scan_counter(),
         .o_spike_outs(snn_spike_outs_vec),
         .o_spike_valids(snn_spike_valids_vec)
     );
@@ -784,7 +786,10 @@ module xcew_top_v1_1 (
         .csr_addr(core_csr_addr),
         .csr_wr_en(core_csr_wr_en),
         .csr_wr_data(core_csr_wr_data),
-        .csr_rd_data(fault_csr_rd_if)
+        .csr_rd_data(fault_csr_rd_if),
+        .o_dbg_fault_latch(),
+        .o_dbg_state(),
+        .o_dbg_latched_error_code()
     );
 
     // =========================================================================

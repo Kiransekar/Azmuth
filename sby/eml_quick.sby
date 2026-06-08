@@ -1,0 +1,18 @@
+# sby/eml_quick.sby — quick formal verification of eml_unit (reduced depth)
+# Same properties as eml.sby but depth=10 for faster turnaround.
+
+[options]
+mode bmc
+depth 10
+
+[engines]
+smtbmc z3
+
+[script]
+read_verilog -formal eml_unit.v
+read_verilog -formal -sv eml_fv.sv
+prep -top eml_fv -flatten
+
+[files]
+../rtl/eml/eml_unit.v
+eml_fv.sv

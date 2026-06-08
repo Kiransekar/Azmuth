@@ -1,0 +1,18 @@
+# sby/eml_btor.sby — formal verification of eml_unit using boolector
+# Boolector is typically 10-100x faster than z3 for BMC.
+
+[options]
+mode bmc
+depth 10
+
+[engines]
+smtbmc boolector
+
+[script]
+read_verilog -formal eml_unit.v
+read_verilog -formal -sv eml_fv.sv
+prep -top eml_fv -flatten
+
+[files]
+../rtl/eml/eml_unit.v
+eml_fv.sv

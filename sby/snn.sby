@@ -1,37 +1,20 @@
-# sby/snn.sby
-# SymbiYosys configuration for SNN Tile 256 formal verification
-# Uses small NUM_NEURONS=4 for tractable BMC
+# sby/snn.sby — formal verification of snn_tile_256 (tapeout audit §1.3c)
+# NUM_NEURONS=4 for tractable BMC. Properties are SVA in sby/snn_fv.sv.
 
 [options]
 mode bmc
 depth 30
-jobs 4
 
 [engines]
-smtbmc
+smtbmc boolector
 
 [script]
-read_verilog -sv ../rtl/snn/lif_ttfs_neuron_v1_1.v
-read_verilog -sv ../rtl/snn/snn_tile_256.v
-prep -top snn_tile_256
-chparam -set NUM_NEURONS 4 snn_tile_256
+read_verilog -formal lif_ttfs_neuron_v1_1.v
+read_verilog -formal snn_tile_256.v
+read_verilog -formal -sv snn_fv.sv
+prep -top snn_fv
 
 [files]
 ../rtl/snn/lif_ttfs_neuron_v1_1.v
 ../rtl/snn/snn_tile_256.v
-
-[property]
-# Property: o_ready is high only in IDLE state
-assert property (@(posedge i_clk_snn) disable iff (i_rst) o_ready |-> snn_tile_256.current_state == 3'b000);
-
-# Property: o_done implies FSM is in DONE_STATE
-assert property (@(posedge i_clk_snn) disable iff (i_rst) o_done |-> snn_tile_256.current_state == 3'b100);
-
-# Property: classify_en in IDLE transitions to LOAD
-assert property (@(posedge i_clk_snn) disable iff (i_rst) (i_classify_en && snn_tile_256.current_state == 3'b000) |=> snn_tile_256.current_state == 3'b001);
-
-# Property: o_class is always within valid range (< NUM_NEURONS=4) when done
-assert property (@(posedge i_clk_snn) disable iff (i_rst) o_done |-> o_class < 4);
-
-# Property: scan_counter never exceeds NUM_NEURONS
-assert property (@(posedge i_clk_snn) disable iff (i_rst) snn_tile_256.scan_counter <= 4);
+snn_fv.sv

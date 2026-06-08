@@ -83,3 +83,11 @@ tb/*_tb
 
 # but test-program fixtures ARE committed (run tests without toolchain)
 !tb/asm/*.hex
+
+# Verilator output
+obj_dir/
+
+# Nested toolchain sources
+toolchain/boolector-src/
+toolchain/picolibc/
+toolchain/openocd-src/

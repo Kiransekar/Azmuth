@@ -1,38 +1,18 @@
-# sby/power.sby
-# SymbiYosys configuration for Power Management formal verification
-# Covers: orchestrator (body_bias_ctrl is controlled via CSR by orchestrator)
+# sby/power.sby — formal verification of orchestrator (tapeout audit §1.3c)
+# Properties are SVA in sby/power_fv.sv (kept out of the Verilog-2001 RTL).
 
 [options]
 mode bmc
 depth 25
-jobs 4
 
 [engines]
-smtbmc
+smtbmc boolector
 
 [script]
-read_verilog -sv ../rtl/power/orchestrator.v
-read_verilog -sv ../rtl/power/body_bias_ctrl.v
-prep -top orchestrator
+read_verilog -formal orchestrator.v
+read_verilog -formal -sv power_fv.sv
+prep -top power_fv
 
 [files]
 ../rtl/power/orchestrator.v
-../rtl/power/body_bias_ctrl.v
-
-[property]
-# === orchestrator properties ===
-
-# Property: tile_sleep implies tile is in SLEEP state
-assert property (@(posedge clk) disable iff (rst) tile_sleep[0] |-> orchestrator.current_tile_state[0] == 4'b0010);
-
-# Property: tile_iso_en implies tile_sleep is set (isolation only when sleeping)
-assert property (@(posedge clk) disable iff (rst) tile_iso_en[0] |-> tile_sleep[0]);
-
-# Property: tile_ret_en implies tile_sleep is set (retention only when sleeping)
-assert property (@(posedge clk) disable iff (rst) tile_ret_en[0] |-> tile_sleep[0]);
-
-# Property: Wake request transitions SLEEP to RUN
-assert property (@(posedge clk) disable iff (rst) (tile_wake_req[0] && orchestrator.current_tile_state[0] == 4'b0010) |=> orchestrator.current_tile_state[0] == 4'b0001);
-
-# Property: idle_counter resets when activity detected in RUN state
-assert property (@(posedge clk) disable iff (rst) (orchestrator.current_tile_state[0] == 4'b0001 && activity_count[0] != 0) |=> orchestrator.idle_counter[0] == 32'h0);
+power_fv.sv

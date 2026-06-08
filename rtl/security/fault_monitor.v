@@ -35,7 +35,11 @@ module fault_monitor (
     input wire [11:0] csr_addr,
     input wire csr_wr_en,
     input wire [31:0] csr_wr_data,
-    output reg [31:0] csr_rd_data
+    output reg [31:0] csr_rd_data,
+
+    output wire        o_dbg_fault_latch,
+    output wire [2:0]  o_dbg_state,
+    output wire [3:0]  o_dbg_latched_error_code
 );
 
     // Internal registers
@@ -110,25 +114,18 @@ module fault_monitor (
             ecc_corrected_data <= 64'h0;
         end
         else begin
-            // Handle CSR writes
-            if (csr_wr_en) begin
-                case (csr_addr)
-                    12'h7CC: begin
-                        fault_status_reg <= csr_wr_data;
-                        if (csr_wr_data[31]) begin  // Write 1 to clear fault latch
-                            fault_latch <= 1'b0;
-                            irq_fault <= 1'b0;
-                            pipeline_halt <= 1'b0;
-                        end
-                    end
-                    12'h7CD: watchdog_limit <= csr_wr_data;  // Watchdog timeout
-                    12'h7CE: ecc_scrub_count_reg <= csr_wr_data;  // ECC control
-                    default: ;  // Handle other CSRs
-                endcase
-            end
-
             // Update cycle counter
             cycle_counter <= cycle_counter + 1;
+
+            // Handle CSR writes (non-clear paths only here)
+            if (csr_wr_en) begin
+                case (csr_addr)
+                    12'h7CC: fault_status_reg <= csr_wr_data;
+                    12'h7CD: watchdog_limit <= csr_wr_data;  // Watchdog timeout
+                    12'h7CE: ecc_scrub_count_reg <= csr_wr_data;  // ECC control
+                    default: ;
+                endcase
+            end
 
             // Update watchdog counter
             if (watchdog_enabled) begin
@@ -228,6 +225,16 @@ module fault_monitor (
             fault_status_reg[3:0] <= latched_error_code;
             fault_status_reg[4] <= watchdog_trip;
             fault_status_reg[5] <= ecc_error;
+
+            // CSR fault-clear override — MUST be last so it wins over
+            // the FSM's irq_fault/pipeline_halt assignments above
+            // (non-blocking last-write-wins semantics)
+            if (csr_wr_en && (csr_addr == 12'h7CC) && csr_wr_data[31]) begin
+                fault_latch <= 1'b0;
+                irq_fault <= 1'b0;
+                pipeline_halt <= 1'b0;
+                current_state <= MON_IDLE;
+            end
         end
     end
 
@@ -258,6 +265,10 @@ module fault_monitor (
             default: csr_rd_data = 32'h0;
         endcase
     end
+
+    assign o_dbg_fault_latch = fault_latch;
+    assign o_dbg_state = current_state;
+    assign o_dbg_latched_error_code = latched_error_code;
 
 endmodule
 

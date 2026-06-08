@@ -36,6 +36,7 @@ module policy_determinism (
     reg [15:0] max_cycle_setting;
     reg exec_active;
     reg timeout_occurred;
+    reg [15:0] target_cycles;  // BUG-037: separate target from cycle counter
 
     // State encoding for policy execution
     parameter IDLE = 3'b000;
@@ -43,8 +44,10 @@ module policy_determinism (
     parameter EXECUTE = 3'b010;
     parameter FINALIZE = 3'b011;
     parameter TIMEOUT = 3'b100;
+    parameter DONE = 3'b101;  // BUG-037: holdoff state to keep policy_done=1
 
     reg [2:0] current_state, next_state;
+    reg [3:0] timeout_wait_cnt;  // BUG-037: separate wait counter for TIMEOUT
 
     always @(posedge clk or posedge rst) begin
         if (rst) begin
@@ -59,6 +62,8 @@ module policy_determinism (
             pol_sec_reg <= 32'h0;
             max_cycle_setting <= 16'd12;  // Default 12 cycles
             policy_result <= 32'h0;
+            timeout_wait_cnt <= 4'd0;  // BUG-037
+            target_cycles <= 16'd12;   // BUG-037
         end
         else begin
             // Handle CSR writes
@@ -91,13 +96,15 @@ module policy_determinism (
                 START_EXEC: begin
                     // Begin deterministic execution
                     temp_result <= 32'h0;  // Initialize result
+                    cycle_counter <= 16'h1;  // Always start counting from 1
 
-                    // Determine fixed cycle execution based on policy type
+                    // Determine target cycle count based on policy type
+                    // (capped by max_cycle_setting)
                     case (policy_data[7:0])
-                        8'h01: cycle_counter <= 16'd12;  // Policy type 1: 12 cycles
-                        8'h02: cycle_counter <= 16'd24;  // Policy type 2: 24 cycles
-                        8'h03: cycle_counter <= 16'd18;  // Policy type 3: 18 cycles
-                        default: cycle_counter <= max_cycle_setting;  // Use configured max
+                        8'h01: target_cycles <= (16'd12 < max_cycle_setting) ? 16'd12 : max_cycle_setting;
+                        8'h02: target_cycles <= (16'd24 < max_cycle_setting) ? 16'd24 : max_cycle_setting;
+                        8'h03: target_cycles <= (16'd18 < max_cycle_setting) ? 16'd18 : max_cycle_setting;
+                        default: target_cycles <= max_cycle_setting;
                     endcase
 
                     current_state <= EXECUTE;
@@ -107,19 +114,25 @@ module policy_determinism (
                     cycle_counter <= cycle_counter + 1;
 
                     // Execute policy operations in fixed time
-                    // Simulate policy computation with fixed steps
                     temp_result <= temp_result + {{16{1'b0}}, cycle_counter} + {{16{1'b0}}, internal_policy_data[15:0]};
 
-                    // Check for timeout in deterministic mode
-                    if (det_en && cycle_counter >= max_cycle_setting) begin
-                        timeout_occurred <= 1'b1;
-                        timeout_irq <= 1'b1;
-                        current_state <= TIMEOUT;
+                    if (det_en) begin
+                        // BUG-037 fix: deterministic mode completes at
+                        // target_cycles (normal) or max_cycle_setting (timeout)
+                        if (cycle_counter >= max_cycle_setting) begin
+                            // Past max: timeout
+                            timeout_occurred <= 1'b1;
+                            timeout_irq <= 1'b1;
+                            current_state <= TIMEOUT;
+                        end
+                        else if (cycle_counter >= target_cycles) begin
+                            // Reached target: normal completion
+                            current_state <= FINALIZE;
+                        end
                     end
-                    else if (!det_en) begin
+                    else begin
                         // Non-deterministic: finish when computation complete
-                        // (In real hardware, this would be variable time)
-                        if (cycle_counter >= 16'd20) begin  // Arbitrary completion time
+                        if (cycle_counter >= 16'd20) begin
                             current_state <= FINALIZE;
                         end
                     end
@@ -130,11 +143,17 @@ module policy_determinism (
                     policy_result <= temp_result ^ {16'h0, cycle_counter};
                     policy_done <= 1'b1;
                     exec_active <= 1'b0;
+                    // BUG-037 fix: transition to DONE holdoff instead of
+                    // jumping straight to IDLE (which would clear policy_done
+                    // before the consumer could see it)
+                    current_state <= DONE;
+                end
 
-                    // Wait for consumer to accept result
-                    if (1'b1) begin  // In a real implementation, this would wait for ready signal
-                        current_state <= IDLE;
-                    end
+                // BUG-037 fix: DONE state holds policy_done=1 for one full
+                // cycle so the consumer is guaranteed to sample it.
+                DONE: begin
+                    policy_done <= 1'b0;
+                    current_state <= IDLE;
                 end
 
                 TIMEOUT: begin
@@ -142,15 +161,13 @@ module policy_determinism (
                     policy_done <= 1'b1;
                     exec_active <= 1'b0;
                     timeout_irq <= 1'b1;
-
-                    // Wait briefly before returning to idle
-                    if (cycle_counter >= 16'h10) begin
-                        current_state <= IDLE;
+                    // BUG-037 fix: use separate wait counter so we don't
+                    // depend on cycle_counter which is already past max.
+                    timeout_wait_cnt <= timeout_wait_cnt + 1;
+                    if (timeout_wait_cnt >= 4'd2) begin
+                        current_state <= DONE;
                         timeout_irq <= 1'b0;
-                        cycle_counter <= 16'h0;
-                    end
-                    else begin
-                        cycle_counter <= cycle_counter + 1;
+                        timeout_wait_cnt <= 4'd0;
                     end
                 end
 

@@ -13,13 +13,23 @@ implementing commit. Bug IDs `BUG-001`..`BUG-027` correspond to the
 ## [Unreleased]
 
 ### Added
+- **Formal verification full PASS (audit §1.3c):** All 4 SymbiYosys proofs
+  (eml, snn, security, power) now PASS using Boolector SMT solver.
+  `security.sby` was previously FAIL due to BUG-038 (fault_monitor CSR-clear
+  priority). This closes the §1.3(c) blocker that was marked BLOCKED since
+  Slice 3. Evidence: `make formal` exit 0, all `DONE (PASS, rc=0)`.
+- **Firmware builds end-to-end (audit §S2.2/S2.5):** `make firmware` now
+  produces `firmware/build/firmware.{elf,hex,bin}` — previously blocked by
+  BUG-039 (missing `_zicsr` in march), BUG-040 (trap_handler.S not compiled),
+  and BUG-041 (_trap_entry symbol mismatch).
 - **RISC-V compliance harness (audit §2.4):** `tb/riscof/azmuth_riscof_tb.v`
   (unified-memory DUT harness with tohost-halt + signature dump),
   `toolchain/riscof/azmuth/env/{link.ld,model_test.h}`, `toolchain/riscof/bin2hex.py`,
   and `flow/compliance_archtest.sh` (differential runner: official arch-test →
-  Spike reference vs Azmuth DUT → signature diff). **`add-01` passes byte-identical
-  to Spike** (first official RISC-V arch-test on Azmuth). Core gains a parameterized
-  `RESET_PC` (default 0; 0x80000000 for arch-test) and a corrected `misa` (RV32I).
+  Spike reference vs Azmuth DUT → signature diff). **The full `rv32i_m/I` suite now
+  passes byte-identical to Spike: PASS=38 FAIL=0 ERROR=0** (was 24/4/10), signatures
+  under `reports/2026-05-24/compliance/`. Core gains a parameterized `RESET_PC`
+  (default 0; 0x80000000 for arch-test) and a corrected `misa` (RV32I).
 - `docs/VERIFICATION_PLAN.md` (audit §2.1, draft) and `docs/CDC_ANALYSIS.md`
   (§3.1) — the latter finds the core↔SNN crossing is unsynchronized (DEV-011).
 - `docs/MICRO_ARCH_SPEC.md` (audit §1.1, draft) with a Deviations Register
@@ -54,6 +64,36 @@ implementing commit. Bug IDs `BUG-001`..`BUG-027` correspond to the
   declared proprietary license.
 
 ### Fixed
+- BUG-038 (formal verification §1.3c): `security.sby` FAIL — in
+  `rtl/security/fault_monitor.v` the CSR fault-clear block was positioned before
+  the FSM case statement. In Verilog non-blocking semantics, the FSM's
+  `irq_fault <= 1'b1` (MON_IRQ_ASSERT) got last-write priority over the
+  CSR-clear's `irq_fault <= 1'b0`, so `irq_fault` stayed asserted after W1C
+  clear → assertion violation. Fix: moved CSR-clear block to after the FSM
+  (lines 232-237) so it gets last-write-wins priority.
+- BUG-039 (firmware §S2.2): `make firmware` failed — assembler rejected CSR
+  instructions (`csrr`, `csrw`) in `firmware/boot.S` because `-march=rv32i`
+  lacks the `zicsr` extension. Fix: changed to `-march=rv32i_zicsr` in Makefile.
+- BUG-040 (firmware §S2.5): `make firmware` failed — `firmware/trap_handler.S`
+  was not included in the GCC invocation, leaving `_trap_entry` undefined.
+  Fix: added `trap_handler.S` to the firmware source list in Makefile.
+- BUG-041 (firmware §S2.5): `_trap_entry` symbol mismatch — `boot.S` line 66
+  references `_trap_entry` to set `mtvec`, but `trap_handler.S` only exported
+  `_trap_handler`. Fix: added `.global _trap_entry` label at the same address.
+- BUG-035/036 (found completing the §2.4 arch-test suite): store data was passed
+  to memory unshifted, so `SB`/`SH` to byte offsets 1–3 wrote `rs2[7:0]` to lane 0
+  (BUG-035); and loads wrote the whole fetched word with no sub-word extraction or
+  sign/zero-extension, so `LB`/`LBU`/`LH`/`LHU` (and any non-zero offset) were wrong
+  (BUG-036). Both fixed in `rtl/core/riscv_core.v` (lane-shift on store, funct3
+  extract+extend on load). Unblocks `sb/sh-align` and all load `*-align` tests.
+- Arch-test harness, not the core (the previous `-fno-pic`-breaks-branches symptom):
+  the DUT resets to `0x80000000`, but GCC placed a 0x40-byte `.note.gnu.build-id`
+  there, pushing `rvtest_entry_point` to `0x80000040` — the core executed the note
+  bytes as instructions (benign under PIC by luck, a stray jump under `-fno-pic`).
+  `flow/compliance_archtest.sh` now compiles with `-fno-pic -Wl,--build-id=none`
+  (entry lands at `0x80000000`, matching the `--pc` given to Spike), which also lets
+  the `jalr`/load-`*-align` tests assemble (no `R_RISCV_GOT_HI20`). DUT memory grown
+  to 4 MB so `jal-01`'s ~1.7 MB-high signature/tohost no longer wrap (was ERROR(dut)).
 - BUG-031/032 (found by the new `tb/isa_tb.v`): `SLTU`/`SLTIU` decoded as `ADD`
   (no funct3=011 case) and `SRA`/`SRAI` did a logical shift (funct7[5] ignored).
   Added `ALU_SLTU`/`ALU_SRA` and the decode cases. No regression.

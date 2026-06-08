@@ -1,30 +1,18 @@
-# sby/eml.sby
-# SymbiYosys configuration for EML unit verification
+# sby/eml.sby — formal verification of eml_unit (tapeout audit §1.3c)
+# Properties are SVA in sby/eml_fv.sv (kept out of the Verilog-2001 RTL).
 
 [options]
 mode bmc
 depth 20
-jobs 4
 
 [engines]
-smtbmc
+smtbmc boolector
 
 [script]
-read_verilog -sv ../rtl/eml/eml_unit.v
-prep -top eml_unit
+read_verilog -formal eml_unit.v
+read_verilog -formal -sv eml_fv.sv
+prep -top eml_fv -flatten
 
 [files]
 ../rtl/eml/eml_unit.v
-
-[defs]
--SMOKETEST
-
-[property]
-# Property: depth counter should not exceed configured limit
-expect (assert property (@(posedge i_clk) disable iff (i_rst) depth_cnt <= i_cfg[14:12]+1));
-
-# Property: overflow should be flagged appropriately
-expect (assert property (@(posedge i_clk) disable iff (i_rst) (overflow_detected) |-> (xcew_status[1]==1)));
-
-# Property: memo cache hit should produce output within expected cycles
-expect (assert property (@(posedge i_clk) disable iff (i_rst) (cache_hit) |-> ##[1:2] o_valid));
+eml_fv.sv

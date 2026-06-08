@@ -440,10 +440,11 @@ RTL Sources → synth_final.tcl → Netlist + Reports
 1. **Unit tests** — Per-module testbenches (`tb/core_tb.v`, `tb/eml_tb.v`, `tb/snn_tile_256_tb.v`, etc.) — **82 PASS** across 8 testbenches
 2. **Integration tests** — SoC, top-level, v1.1, and co-simulation — **8 PASS** across 4 testbenches
 3. **Formal verification** — SymbiYosys (`sby/eml.sby`, `sby/snn.sby`, `sby/security.sby`, `sby/power.sby`) — **18 properties** covering EML, SNN, security, and power
-4. **Co-simulation** — Self-contained iverilog testbench (`make sim_cosim`) with PC tracking, AXI monitoring, and Python golden model harness
-5. **Golden model** — Python reference for EML mathematical functions
-6. **Boundary tests** — Depth limits, overflow, NaN, watchdog timeout
-7. **CSR collision check** — `make check_csr_v1.1` verifies no address conflicts
+4. **RISC-V architectural compliance** — Differential against the Spike golden model (`flow/compliance_archtest.sh`): the official `rv32i_m/I` arch-test suite passes **38/38, byte-identical** (signatures in `reports/latest/compliance/`)
+5. **Co-simulation** — Self-contained iverilog testbench (`make sim_cosim`) with PC tracking, AXI monitoring, and Python golden model harness
+6. **Golden model** — Python reference for EML mathematical functions
+7. **Boundary tests** — Depth limits, overflow, NaN, watchdog timeout
+8. **CSR collision check** — `make check_csr_v1.1` verifies no address conflicts
 
 ---
 
@@ -487,6 +488,8 @@ The following bugs were identified and fixed during code review:
 | 32 | `rtl/core/riscv_core.v` | `SRA`/`SRAI` did a logical shift (`SHR` ignored funct7[5]) — arithmetic right shift of negatives was wrong | Added `ALU_SRA` (`$signed >>>`) and decode `instr[30] ? SRA : SRL`. Found by `tb/isa_tb.v` |
 | 33 | `rtl/core/riscv_core.v` | `AUIPC` not in the writeback mux → wrote ALU garbage (`rs1+rs2`) instead of `pc + imm` | Added `AUIPC → id_ex_pc + id_imm` to `wb_data`. Found preparing RISCOF (`la`/`sw symbol` use AUIPC) |
 | 34 | `rtl/core/riscv_core.v` | `generate_imm` had no `JALR` case → JALR offset always 0 (indirect jumps ignored their immediate) | Added `OPCODE_JALR` to the I-type immediate case. Found preparing RISCOF |
+| 35 | `rtl/core/riscv_core.v` | Store data driven to memory unshifted, so `SB`/`SH` to byte offset 1–3 wrote `rs2[7:0]` into lane 0 instead of the addressed lane | Shift `mem_wdata` left by `8×addr[1:0]` so the byte/half aligns with the byte-enables. Found by `sb/sh-align` arch-tests |
+| 36 | `rtl/core/riscv_core.v` | Loads wrote the whole fetched 32-bit word — no sub-word select or sign/zero-extension, so `LB`/`LBU`/`LH`/`LHU` (and any non-zero byte offset) returned wrong data | Added funct3-based extract of the addressed byte/half from `mem_rdata` with sign/zero-extension. Found by load `*-align` arch-tests |
 
 ## Verilog 2001 Compliance & Tapeout Readiness
 

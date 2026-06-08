@@ -204,7 +204,7 @@ formal:
 	@for sby_file in $(SBY_DIR)/eml.sby $(SBY_DIR)/snn.sby $(SBY_DIR)/security.sby $(SBY_DIR)/power.sby; do \
 		if [ -f "$$sby_file" ]; then \
 			echo "Running $$sby_file"; \
-			sby -f $$sby_file || exit 1; \
+			(cd $(SBY_DIR) && sby -f $$(basename $$sby_file)) || exit 1; \
 		else \
 			echo "WARNING: $$sby_file not found, skipping"; \
 		fi \
@@ -218,10 +218,10 @@ firmware:
 	@if command -v $(RISCV_GCC) >/dev/null 2>&1; then \
 		echo "Compiling firmware..."; \
 		mkdir -p $(FW_DIR)/build; \
-		$(RISCV_GCC) -march=rv32i -mabi=ilp32 -I. -T$(FW_DIR)/linker.ld \
+		$(RISCV_GCC) -march=rv32i_zicsr -mabi=ilp32 -I. -T$(FW_DIR)/linker.ld \
 			-N -ffreestanding -nostartfiles -static \
 			-o $(FW_DIR)/build/firmware.elf \
-			$(FW_DIR)/boot.S $(FW_DIR)/main.c; \
+			$(FW_DIR)/boot.S $(FW_DIR)/trap_handler.S $(FW_DIR)/main.c; \
 		if [ $$? -eq 0 ]; then \
 			echo "Converting ELF to hex..."; \
 			$(RISCV_OBJCOPY) -O ihex $(FW_DIR)/build/firmware.elf $(FW_DIR)/build/firmware.hex; \

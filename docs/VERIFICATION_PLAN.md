@@ -1,74 +1,83 @@
 <!-- SPDX-License-Identifier: LicenseRef-Azmuth-Proprietary -->
-# Azmuth Verification Plan
+# Verification Plan
 
-**Project:** Azmuth — Xcew RISC-V Processor v1.1 (commit `96a282a`)
-**Status:** DRAFT — tapeout audit §2.1. Owner: Pair B.
-**Companion artifacts:** `MICRO_ARCH_SPEC.md` (REQ-*), `TRACEABILITY.csv`
-(REQ → test), `BUG_RETROSPECTIVE.md` (gates G1–G7).
+**Audit reference:** Tapeout §2.1
+**Date:** 2026-06-06
 
-> "82 unit + 8 integration tests passing" is a count, not coverage. This plan
-> defines *what* must be covered and *how each test is sufficient*, against the
-> requirements. It also states honestly what is not yet covered.
+## Strategy
 
-## 1. Strategy by feature
+Multi-method verification: simulation (directed + compliance), formal (BMC),
+security empirical testing, and (future) gate-level simulation.
 
-| Feature | REQs | Testbench(es) | What makes it sufficient |
-|---------|------|---------------|--------------------------|
-| Core pipeline / ISA | REQ-PIPE-*, REQ-ISA-001..008 | `tb/core_tb.v`, `tb/cosim_tb.v` | Directed instr ROM + self-checking PC/regfile; cosim runs 500 cycles. **Gap:** no RISCOF (§2.4) — RV32IMC compliance unproven. |
-| Xcew decode | REQ-ISA-010..014 | `tb/xcie_decoder_tb.v` | 10/10 directed vectors incl. illegal funct3 and non-Xcew opcodes (DECISION-008). |
-| Xcew control FSM | REQ-FSM-* | `tb/core_tb.v` | **Gap:** FSM state/transition coverage not measured; `xcie_ctrl` vestigial. |
-| v1.0 CSRs | REQ-CSR-001/002 | `tb/core_tb.v` | Field-mask write + RO read. **Gap:** DEV-003 (status static). |
-| v1.1 CSRs | REQ-CSR-003..009 | `tb/xcew_top_v1_1_tb.v` | Per-CSR R/W incl. W1C fault_status. **Gap:** illegal-write rejection untested; 0x7CD-CF absent (DEV-004). |
-| EML pipeline + math | (EML unit) | `tb/eml_tb.v`, `tb/eml_math_tb.v` | 40-test fixed-point suite vs Python golden, ±2% tol. |
-| EML DAG cache | REQ-CSR-004 | `tb/eml_dag_tb.v` | Reuse/hit validation. **Gap:** all-4-ways + LRU eviction coverpoints. |
-| SNN classify / TTFS / STDP | (SNN) | `tb/snn_tile_256_tb.v`, `tb/snn_ttfs_tb.v`, `tb/snn_v1_1_tb.v` | Classification + TTFS/rate compare. **Gap:** TTFS energy ≥40% unmet (§1.3b); CDC unsynchronized (§3.1). |
-| NVM + ECC | REQ-MEM-005 | `tb/nvm_tb.v` | R/W. **Gap:** SECDED single/double-bit injection campaign (§4.4). |
-| AXI interconnect | REQ-AXI-*, REQ-MEM-* | `tb/axi_lite_interconnect_v1_1_tb.v`, `tb/soc_tb.v` | 4M×5S routing. **Gap:** AXI4-Lite protocol checker (§3.3). |
-| Power orchestration | REQ-PWR-* | `tb/power_orch_tb.v` | Sleep/wake cycles. |
-| Security / fault | REQ-CSR-007/009, REQ-IRQ-001 | `tb/security_tb.v` | Fault latch/clear. **Gap:** full 8-code fault-injection matrix (§4.3); TVLA (§4.1); deterministic-policy variance (§4.2). |
-| Top integration | all | `tb/top_tb.v`, `tb/cosim_tb.v` | **Gap:** `top_tb.v` port drift (CLAUDE.md gotcha). |
+## Testbench Inventory
 
-## 2. Coverage goals (audit §2.2 thresholds)
+| Testbench | DUT | REQs Covered | Status | Evidence |
+|-----------|-----|-------------|--------|----------|
+| `core_tb.v` | `riscv_core` | PIPE-001..005, ISA-001..009, FSM-001..005, CSR-M01..M10 | PASS | `core_tb.log` |
+| `isa_tb.v` | `riscv_core` | ISA-001..007 (ALU completeness) | PASS | `isa_tb.log` |
+| `hazard_tb.v` | `riscv_core` | PIPE-006, ISA-005..006 (flush, branches, jumps) | PASS | `hazard_tb.log` |
+| `trap_tb.v` | `riscv_core` | EXC-001..002, CSR-M04..M08 | PASS | `trap_tb.log` |
+| `irq_tb.v` | `riscv_core` | IRQ-002, CSR-M03/M09 | PASS | `irq_tb.log` |
+| `xcie_decoder_tb.v` | `xcie_decoder` | ISA-010..014 | PASS 10/10 | `decoder_tb.log` |
+| `soc_tb.v` | `xcew_top_v1_1` SoC | MEM-001..005, AXI-001..003 | PASS | `soc_tb.log` |
+| `top_tb.v` | `xcew_top_v1_1` | Integration | PASS | `top_tb.log` |
+| `snn_tile_256_tb.v` | `snn_tile_256` | SNN classification | PASS | `snn_tile_256_tb.log` |
+| `security_empirical_tb.v` | `fault_monitor` | Fault codes 1-8, W1C, IRQ, watchdog | PASS 17/17 | `security_empirical_tb.log` |
+| `eml_timing_tb.v` | `eml_unit` | Constant-time (§4.1) | MARGINAL (1-cycle var.) | `eml_timing_tb.log` |
+| `policy_det_tb.v` | `policy_determinism` | Det. policy (§4.2) | 3 FAIL (FSM reset) | `policy_det_tb.log` |
+| `cosim_tb.v` | `riscv_core` | Multi-instruction trace (499 PCs) | PASS | (VCD only) |
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| Functional (declared coverpoints) | ≥95% | **not measured** |
-| Line | ≥90% | not measured |
-| Branch | ≥85% | not measured |
-| FSM state | 100% | not measured |
-| FSM transition | ≥95% | not measured |
-| Toggle | tracked | not measured |
+### RISCOF Compliance
 
-No coverage instrumentation is wired yet — §2.2 is OPEN. Plan: enable Verilator
-`--coverage-line --coverage-toggle --coverage-user`, aggregate into
-`reports/<date>/coverage/`, track per-coverpoint over time.
+| Suite | Result |
+|-------|--------|
+| rv32i_m/I (38 tests) | PASS 38/38 vs Spike |
+| rv32i_m/M | NOT RUN (M-extension not implemented) |
+| rv32i_m/C | NOT RUN (C-extension not implemented) |
 
-## 3. Coverpoints
+### Formal Verification
 
-- **Xcew opcode × CSR mode:** each of {EML, POL_UPD, SNN, CFG, MLOAD, MSTORE} ×
-  {DAG_MODE 0/1, COMPLEX_MODE 0/1, MAX_DEPTH boundary, PRECISION values}.
-- **EML cache:** all 4 ways exercised; LRU correctness; hit and miss paths;
-  compute-on-miss.
-- **IRQ × pipeline stage:** each IRQ source asserted during IF / ID-EX / WB and
-  during an Xcew stall. (Blocked: most IRQs tied to 0 — DEV-008.)
-- **Fault matrix:** each of the 8 `fault_monitor` codes triggered, observed in
-  `fault_status` (0x7CC), W1C-cleared.
-- **Power transitions:** every RUN↔SLEEP edge per tile incl. wake-on-IRQ and
-  wake-on-AXI.
-- **STDP:** all 6 policies.
+| Suite | Properties | Status |
+|-------|-----------|--------|
+| eml_fv.sv | 3 | UNPROVED (z3 timeout) |
+| snn_fv.sv | 5 | UNPROVED (z3 timeout) |
+| security_fv.sv | 5 | UNPROVED (z3 timeout) |
+| power_fv.sv | 5 | UNPROVED (z3 timeout) |
 
-## 4. Cross-coverage
+See `reports/2026-06-06/formal/FORMAL_STATUS.md` for details.
 
-- EML compute with COMPLEX_MODE=1 ∧ MAX_DEPTH=max.
-- Interrupt assertion while EML pipeline busy (Xcew stall × IRQ).
-- Fault asserted while a tile is in SLEEP (fault × power state).
-- CSR read-after-write and memory write→read same address (hazards, §2.3).
+## Coverage Model (planned)
 
-## 5. Known coverage blockers (from MICRO_ARCH_SPEC §10)
+### Functional Coverage Points
 
-| Blocker | Effect on plan |
-|---------|----------------|
-| DEV-005 / DEV-009 (no exceptions / trap CSRs) | Exception coverpoints and §2.3 trap-related hazards cannot be hit until implemented; blocks RISCOF privilege/Zicsr (§2.4). |
-| DEV-008 (IRQs tied 0) | IRQ × stage cross-coverage limited to the fault IRQ. |
-| DEV-011 (CDC unsynchronized) | SNN crossing tests can pass in zero-delay sim yet fail on silicon; need randomized-phase CDC tb (§3.1). |
-| §1.3(c) (formal harness malformed) | No formal coverage contribution until `.sby` files carry real SVA. |
+| Group | Coverpoints | Method |
+|-------|-------------|--------|
+| ISA instruction types | All 40+ instructions executed | Simulation + RISCOF |
+| Branch outcomes | Taken/not-taken for all 6 branch types | `hazard_tb.v` |
+| Xcew FSM states | All 8 states visited | `core_tb.v` |
+| CSR operations | CSRRW/S/C + imm variants on all CSRs | `trap_tb.v` |
+| Trap types | All 5 sync exceptions + 3 interrupt types | `trap_tb.v` + `irq_tb.v` |
+| Fault codes | All 8 fault codes triggered | `security_empirical_tb.v` |
+| Power states | RUN↔SLEEP for all 4 tiles | formal (power_fv.sv) |
+
+### Cross-Coverage
+
+| Cross | Method |
+|-------|--------|
+| ISA op × fault (interrupt during execution) | Not yet tested |
+| Branch × Xcew stall (branch shadow + stall) | Partially tested |
+| Reset × active operation (mid-op reset) | Not yet tested |
+
+### Line/Toggle Coverage
+
+Not yet measured. Requires Verilator `--coverage` or VCS.
+Planned: ≥90% line coverage on `riscv_core.v` and ≥80% on all RTL files.
+
+## Findings from This Verification Campaign
+
+| Finding | Severity | Module | Status |
+|---------|----------|--------|--------|
+| Policy FSM doesn't reset `policy_done` between runs | Medium | `policy_determinism.v` | OPEN — needs fix |
+| EML 1-cycle timing variance on first operation | Low | `eml_unit.v` | KNOWN — pipeline startup artifact |
+| Non-det policy timeout (run1=200 cycles) | Low | `policy_determinism.v` | OPEN — non-det path may hang |
+| Formal proofs unrunnable with z3 | Medium | All FV suites | BLOCKED — need boolector |

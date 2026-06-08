@@ -414,10 +414,25 @@ module riscv_core #(
     wire is_csr_read = id_ex_valid && (id_ex_instr[6:0] == OPCODE_SYSTEM) &&
                        (id_ex_instr[14:12] != 3'b000);  // Any CSR instruction (not ECALL/EBREAK)
     wire is_load = id_ex_valid && (id_ex_instr[6:0] == OPCODE_LTYPE);
+    // Sub-word load extraction + sign/zero-extension (BUG-036: loads wrote the
+    // whole fetched word, so LB/LBU/LH/LHU and any non-zero byte offset were
+    // wrong). Select the addressed byte/half from mem_rdata via alu_result[1:0].
+    wire [7:0]  load_byte = mem_rdata >> {alu_result[1:0], 3'b000};
+    wire [15:0] load_half = mem_rdata >> {alu_result[1],   4'b0000};
+    reg  [31:0] load_data;
+    always @(*) begin
+        case (id_ex_instr[14:12])
+            3'b000:  load_data = {{24{load_byte[7]}},  load_byte};  // LB
+            3'b100:  load_data = {24'h0,               load_byte};  // LBU
+            3'b001:  load_data = {{16{load_half[15]}}, load_half};  // LH
+            3'b101:  load_data = {16'h0,               load_half};  // LHU
+            default: load_data = mem_rdata;                         // LW
+        endcase
+    end
     wire [31:0] wb_data;
     assign wb_data = xcew_valid ? xcew_result :
                      is_csr_read ? csr_read_value :
-                     is_load ? mem_rdata :
+                     is_load ? load_data :
                      ((id_ex_instr[6:0] == OPCODE_JAL) || (id_ex_instr[6:0] == OPCODE_JALR)) ? id_ex_pc + 32'h4 :
                      (id_ex_instr[6:0] == OPCODE_LUI) ? id_imm :
                      (id_ex_instr[6:0] == OPCODE_AUIPC) ? (id_ex_pc + id_imm) : // BUG-033: was ALU garbage
@@ -629,7 +644,11 @@ module riscv_core #(
     // Memory signals - driven by load/store instructions
     wire is_store = id_ex_valid && (id_ex_instr[6:0] == OPCODE_STYPE);
     assign mem_addr  = (is_store || is_load) ? alu_result : 32'h0;
-    assign mem_wdata = is_store ? rf_rs2_data : 32'h0;
+    // SB/SH place the source byte/half in the addressed lane: shift rs2 left by
+    // 8*byte-offset so it aligns with the byte-enables below. (BUG-035: store
+    // data was unshifted, so SB/SH to offsets 1-3 wrote rs2[7:0] to lane 0.)
+    wire [4:0] store_shamt = {alu_result[1:0], 3'b000};
+    assign mem_wdata = is_store ? (rf_rs2_data << store_shamt) : 32'h0;
     assign mem_we    = is_store && !trap_taken;  // suppress store on a taken trap
 
     // Byte enable generation based on store funct3 and address[1:0]
