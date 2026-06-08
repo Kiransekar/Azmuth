@@ -91,3 +91,6 @@ obj_dir/
 toolchain/boolector-src/
 toolchain/picolibc/
 toolchain/openocd-src/
+
+# Cloned OpenLane directory
+openlane/
