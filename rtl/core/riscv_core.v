@@ -42,6 +42,28 @@ module riscv_core #(
     input  wire [31:0] i_xcew_resp,
     input  wire        i_xcew_done,
 
+    // Debug interface
+    input  wire        i_dm_halt_req,
+    input  wire        i_dm_resume_req,
+    input  wire        i_dm_reset_req,
+    output wire        o_dm_halted,
+    output wire        o_dm_running,
+    output wire        o_dm_has_reset,
+    output wire [31:0] o_dm_pc,
+    input  wire        i_debug_trigger_hit,
+    // Debug CSRs (per RISC-V Debug Spec 0.13.2)
+    output wire [31:0] o_csr_dcsr,
+    output wire [31:0] o_csr_dpc,
+    output wire [31:0] o_csr_dscratch0,
+    output wire [31:0] o_csr_dscratch1,
+    // Debug register access interface (from debug module abstract command)
+    input  wire        i_dbg_reg_req,
+    input  wire        i_dbg_reg_wr,
+    input  wire [11:0] i_dbg_reg_addr,
+    input  wire [31:0] i_dbg_reg_wdata,
+    output reg  [31:0] o_dbg_reg_rdata,
+    output reg         o_dbg_reg_ack,
+
     // Register file read data outputs (for Xcew unit)
     output wire [31:0] o_rs1_data,
     output wire [31:0] o_rs2_data,
@@ -256,7 +278,11 @@ module riscv_core #(
     end
 
     always @(*) begin
-        if (trap_taken)
+        if (debug_enter)
+            next_pc = 32'h00000800;       // Debug ROM base address
+        else if (debug_exit)
+            next_pc = csr_dpc;            // Resume from debug PC
+        else if (trap_taken)
             next_pc = csr_mtvec;          // direct-mode trap vector
         else if (mret_taken)
             next_pc = csr_mepc;           // return from trap
@@ -276,6 +302,11 @@ module riscv_core #(
             pc_reg <= RESET_PC;
             if_instr <= 32'h00000000;
             if_pc <= RESET_PC;
+        end else if (debug_enter || debug_exit || trap_taken || mret_taken) begin
+            // Force PC redirect on debug/trap events (override stall)
+            pc_reg <= next_pc;
+            if_instr <= 32'h00000013;  // Insert NOP bubble during redirect
+            if_pc <= next_pc;
         end else if (!stall_if && !bubble_if) begin
             pc_reg <= next_pc;
             if_instr <= instr;
@@ -506,6 +537,8 @@ module riscv_core #(
         (csr_a==CSR_MSTATUS)||(csr_a==CSR_MISA)||(csr_a==CSR_MIE)||(csr_a==CSR_MTVEC)||
         (csr_a==CSR_MSCRATCH)||(csr_a==CSR_MEPC)||(csr_a==CSR_MCAUSE)||(csr_a==CSR_MTVAL)||
         (csr_a==CSR_MIP)||(csr_a==CSR_MHARTID);
+    wire csr_is_debug =
+        (csr_a==CSR_DCSR)||(csr_a==CSR_DPC)||(csr_a==CSR_DSCRATCH0)||(csr_a==CSR_DSCRATCH1);
 
     reg [31:0] csr_int_rdata;
     always @(*) begin
@@ -519,6 +552,10 @@ module riscv_core #(
             CSR_MCAUSE:   csr_int_rdata = csr_mcause;
             CSR_MTVAL:    csr_int_rdata = csr_mtval;
             CSR_MIP:      csr_int_rdata = csr_mip;
+            CSR_DCSR:     csr_int_rdata = csr_dcsr;
+            CSR_DPC:      csr_int_rdata = csr_dpc;
+            CSR_DSCRATCH0: csr_int_rdata = csr_dscratch0;
+            CSR_DSCRATCH1: csr_int_rdata = csr_dscratch1;
             default:      csr_int_rdata = 32'h0; // MHARTID and others read 0
         endcase
     end
@@ -587,7 +624,7 @@ module riscv_core #(
         if (rst) redirect_r <= 1'b0;
         else if (!stall_id_ex) redirect_r <= redirect;
     end
-    wire flush = redirect | redirect_r;
+    wire flush = redirect | redirect_r | debug_exit | debug_enter;
 
     // Trap cause / mtval (synchronous exceptions take priority over interrupts)
     reg [31:0] trap_cause, trap_tval;
@@ -602,12 +639,74 @@ module riscv_core #(
         else                         begin trap_cause=32'h80000003; trap_tval=32'h0;       end
     end
 
+    // Debug CSR addresses
+    localparam CSR_DCSR       = 12'h7B0;
+    localparam CSR_DPC        = 12'h7B1;
+    localparam CSR_DSCRATCH0  = 12'h7B2;
+    localparam CSR_DSCRATCH1  = 12'h7B3;
+
+    // Debug mode state
+    reg        debug_mode;
+    reg        debug_halted;
+    reg        debug_single_step;
+    reg [1:0]  debug_prv;
+    reg [31:0] csr_dcsr;
+    reg [31:0] csr_dpc;
+    reg [31:0] csr_dscratch0;
+    reg [31:0] csr_dscratch1;
+
+    // DCSR fields
+    wire dcsr_prv    = csr_dcsr[31:30];
+    wire dcsr_step   = csr_dcsr[2];
+    wire dcsr_nmip   = csr_dcsr[1];
+    wire dcsr_stopcount = csr_dcsr[0];
+    wire dcsr_cause  = csr_dcsr[8:6]; // halt cause
+
+    // Halt request from DM
+    wire dm_halt_req_sync = i_dm_halt_req;
+
+    // Debug mode entry conditions
+    wire debug_halt_request = dm_halt_req_sync && !debug_mode;
+    wire debug_ebreak       = is_ebreak && !debug_mode;
+    wire debug_trigger_hit  = i_debug_trigger_hit && !debug_mode;
+    // Single-step: after resume with dcsr.step=1, re-enter debug after one instruction completes
+    // step_armed prevents re-entry on the same cycle as resume
+    wire debug_step_reenter = debug_single_step && !debug_mode && !debug_halted && 
+                               step_armed && id_ex_valid && !stall_id_ex;
+
+    wire debug_enter = debug_halt_request | debug_ebreak | debug_trigger_hit | debug_step_reenter;
+
+    // step_armed: set after resume with single-step, delayed by one instruction execution
+    // Only arm after the redirect to dpc has completed (redirect_r = 0)
+    reg step_armed;
+    always @(posedge clk or posedge rst) begin
+        if (rst)
+            step_armed <= 1'b0;
+        else if (debug_step_reenter)
+            step_armed <= 1'b0;  // Clear after re-entering debug mode
+        else if (!debug_single_step)
+            step_armed <= 1'b0;  // Clear if single-step mode disabled
+        else if (debug_exit)
+            step_armed <= 1'b1;  // Arm when resuming with single-step
+    end
+
+    // Debug mode exit
+    wire debug_exit = i_dm_resume_req && debug_mode;
+
     // Machine CSR state update
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             csr_mstatus  <= 32'h0;  csr_mie    <= 32'h0;  csr_mtvec <= 32'h0;
             csr_mscratch <= 32'h0;  csr_mepc   <= 32'h0;  csr_mcause<= 32'h0;
             csr_mtval    <= 32'h0;
+            debug_mode   <= 1'b0;
+            debug_halted <= 1'b0;
+            debug_single_step <= 1'b0;
+            debug_prv    <= 2'b11; // M-mode
+            csr_dcsr     <= 32'h40000000; // xdebugver=4 (0.13.2), ebreakm=1
+            csr_dpc      <= 32'h0;
+            csr_dscratch0 <= 32'h0;
+            csr_dscratch1 <= 32'h0;
         end else if (trap_taken) begin
             csr_mepc           <= id_ex_pc;
             csr_mcause         <= trap_cause;
@@ -630,6 +729,79 @@ module riscv_core #(
                 CSR_MTVAL:    csr_mtval    <= csr_new;
                 default: ; // MISA/MIP/MHARTID read-only
             endcase
+        end
+    end
+
+    // Debug mode state machine and CSR updates
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            debug_mode   <= 1'b0;
+            debug_halted <= 1'b0;
+            debug_single_step <= 1'b0;
+            debug_prv    <= 2'b11;
+            csr_dcsr     <= 32'h40000000;
+            csr_dpc      <= 32'h0;
+            csr_dscratch0 <= 32'h0;
+            csr_dscratch1 <= 32'h0;
+        end else begin
+            // Debug mode entry
+            if (debug_enter) begin
+                debug_mode   <= 1'b1;
+                debug_halted <= 1'b1;
+                debug_prv    <= csr_mstatus[12:11]; // Save MPP
+                // For single-step: dpc = next instruction (after the one just executed)
+                // For halt/ebreak/trigger: dpc = current instruction (not yet completed)
+                csr_dpc      <= debug_step_reenter ? (id_ex_pc + 4) : id_ex_pc;
+                csr_dcsr[8:6] <= debug_step_reenter ? 3'b100 :  // single step
+                                  debug_ebreak ? 3'b001 :  // ebreak
+                                  debug_halt_request ? 3'b011 : // halt req
+                                  3'b100; // trigger
+                csr_dcsr[1:0] <= debug_prv;  // Save privilege mode to prv field
+            end
+
+            // Debug mode exit (resume)
+            if (debug_exit) begin
+                debug_mode   <= 1'b0;
+                debug_halted <= 1'b0;
+                debug_single_step <= 1'b0;
+            end
+
+            // Single step handling
+            if (debug_mode && !debug_halted) begin
+                if (debug_single_step) begin
+                    debug_halted <= 1'b1;
+                    csr_dpc <= pc_reg;
+                    csr_dcsr[8:6] <= 3'b100; // single step
+                end
+            end
+
+            // DM requests single step
+            if (i_dm_resume_req && debug_mode && csr_dcsr[2]) begin
+                debug_single_step <= 1'b1;
+            end
+
+            // Debug CSR writes (from abstract command)
+            if (is_csr_op && (csr_a == CSR_DCSR) && csr_wr_happens) begin
+                csr_dcsr <= csr_new;
+            end
+            if (is_csr_op && (csr_a == CSR_DPC) && csr_wr_happens) begin
+                csr_dpc <= csr_new;
+            end
+            if (is_csr_op && (csr_a == CSR_DSCRATCH0) && csr_wr_happens) begin
+                csr_dscratch0 <= csr_new;
+            end
+            if (is_csr_op && (csr_a == CSR_DSCRATCH1) && csr_wr_happens) begin
+                csr_dscratch1 <= csr_new;
+            end
+
+            // Halt on reset
+            if (i_dm_reset_req) begin
+                debug_mode   <= 1'b1;
+                debug_halted <= 1'b1;
+                debug_prv    <= 2'b11;
+                csr_dpc      <= RESET_PC;
+                csr_dcsr[8:6] <= 3'b110; // halt on reset
+            end
         end
     end
 
@@ -685,5 +857,82 @@ module riscv_core #(
     assign wb_stall = stall_id_ex;
     assign exception = trap_taken && any_exception;
     assign interrupt = trap_taken && !any_exception;
+
+    // Debug outputs
+    assign o_dm_halted    = debug_halted;
+    assign o_dm_running   = debug_mode && !debug_halted;
+    assign o_dm_has_reset = 1'b0; // No reset in debug mode currently
+    assign o_dm_pc        = debug_mode ? csr_dpc : pc_reg;
+    assign o_csr_dcsr     = csr_dcsr;
+    assign o_csr_dpc      = csr_dpc;
+    assign o_csr_dscratch0 = csr_dscratch0;
+    assign o_csr_dscratch1 = csr_dscratch1;
+
+    // Debug register access (GPR and CSR read/write from debug module)
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            o_dbg_reg_rdata <= 32'h0;
+            o_dbg_reg_ack   <= 1'b0;
+        end else begin
+            o_dbg_reg_ack <= 1'b0; // default: pulse on completion
+            if (i_dbg_reg_req && !o_dbg_reg_ack) begin
+                if (i_dbg_reg_wr) begin
+                    // Write operation
+                    if (i_dbg_reg_addr[11:5] == 7'h00) begin
+                        // GPR write (0x000-0x01F)
+                        if (i_dbg_reg_addr[4:0] != 5'h0) begin
+                            regfile[i_dbg_reg_addr[4:0]] <= i_dbg_reg_wdata;
+                        end
+                    end else begin
+                        // CSR write
+                        case (i_dbg_reg_addr)
+                            CSR_DCSR:       csr_dcsr <= i_dbg_reg_wdata;
+                            CSR_DPC:        csr_dpc <= i_dbg_reg_wdata;
+                            CSR_DSCRATCH0:  csr_dscratch0 <= i_dbg_reg_wdata;
+                            CSR_DSCRATCH1:  csr_dscratch1 <= i_dbg_reg_wdata;
+                            CSR_MSTATUS:    csr_mstatus <= i_dbg_reg_wdata;
+                            CSR_MIE:        csr_mie <= i_dbg_reg_wdata;
+                            CSR_MTVEC:      csr_mtvec <= i_dbg_reg_wdata;
+                            CSR_MSCRATCH:   csr_mscratch <= i_dbg_reg_wdata;
+                            CSR_MEPC:       csr_mepc <= i_dbg_reg_wdata;
+                            CSR_MCAUSE:     csr_mcause <= i_dbg_reg_wdata;
+                            CSR_MTVAL:      csr_mtval <= i_dbg_reg_wdata;
+                            default: ; // Read-only CSRs ignored
+                        endcase
+                    end
+                    o_dbg_reg_ack <= 1'b1;
+                end else begin
+                    // Read operation
+                    if (i_dbg_reg_addr[11:5] == 7'h00) begin
+                        // GPR read (0x000-0x01F)
+                        if (i_dbg_reg_addr[4:0] == 5'h0)
+                            o_dbg_reg_rdata <= 32'h0;
+                        else
+                            o_dbg_reg_rdata <= regfile[i_dbg_reg_addr[4:0]];
+                    end else begin
+                        // CSR read
+                        case (i_dbg_reg_addr)
+                            CSR_DCSR:       o_dbg_reg_rdata <= csr_dcsr;
+                            CSR_DPC:        o_dbg_reg_rdata <= csr_dpc;
+                            CSR_DSCRATCH0:  o_dbg_reg_rdata <= csr_dscratch0;
+                            CSR_DSCRATCH1:  o_dbg_reg_rdata <= csr_dscratch1;
+                            CSR_MSTATUS:    o_dbg_reg_rdata <= csr_mstatus;
+                            CSR_MISA:       o_dbg_reg_rdata <= 32'h40000100;
+                            CSR_MIE:        o_dbg_reg_rdata <= csr_mie;
+                            CSR_MTVEC:      o_dbg_reg_rdata <= csr_mtvec;
+                            CSR_MSCRATCH:   o_dbg_reg_rdata <= csr_mscratch;
+                            CSR_MEPC:       o_dbg_reg_rdata <= csr_mepc;
+                            CSR_MCAUSE:     o_dbg_reg_rdata <= csr_mcause;
+                            CSR_MTVAL:      o_dbg_reg_rdata <= csr_mtval;
+                            CSR_MIP:        o_dbg_reg_rdata <= csr_mip;
+                            CSR_MHARTID:    o_dbg_reg_rdata <= 32'h0;
+                            default:        o_dbg_reg_rdata <= 32'h0;
+                        endcase
+                    end
+                    o_dbg_reg_ack <= 1'b1;
+                end
+            end
+        end
+    end
 
 endmodule

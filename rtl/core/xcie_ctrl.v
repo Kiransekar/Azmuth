@@ -14,6 +14,7 @@ module xcie_ctrl (
     input  wire        i_eml_valid,
     input  wire        i_snn_done,
     input  wire        i_nvm_busy,
+    input  wire        i_memo_done,
 
     output reg         o_ctrl_decode_valid,
     output reg         o_ctrl_csr_wr,
@@ -86,8 +87,10 @@ module xcie_ctrl (
             end
 
             EXE_MEMO: begin
-                // Wait for memo operation to complete
-                next_state = IDLE;
+                if (i_memo_done)
+                    next_state = IDLE;
+                else
+                    next_state = EXE_MEMO;
             end
 
             EXE_SNN: begin

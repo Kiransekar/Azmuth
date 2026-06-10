@@ -19,5 +19,15 @@ rtl/snn/snn_tile_256.v
 rtl/snn/stdp_engine.v
 rtl/snn/stdp_engine_v1_1.v
 rtl/soc/axi_lite_interconnect_v1_1.v
+rtl/soc/cdc_sync.v
 rtl/xcew_top.v
 rtl/xcew_top_v1_1.v
+rtl/debug/debug_rom.v
+rtl/debug/dm_abstract_cmd.v
+rtl/debug/dm_progbuf.v
+rtl/debug/dm_regfile.v
+rtl/debug/dm_top.v
+rtl/debug/dm_trigger.v
+rtl/debug/dtm/dtm_top.v
+rtl/debug/dtm/jtag_tap.v
+rtl/debug/dtm/jtag_dr.v

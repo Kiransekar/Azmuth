@@ -15,7 +15,8 @@ module eml_unit (
     output reg [31:0]  o_rd,
     output reg         o_valid,
     output wire        o_ready,
-    output reg         o_exc
+    output reg         o_exc,
+    output wire [2:0]  o_stage    // Exposed pipeline stage for status CSR
 );
 
     // Configuration bit assignments
@@ -42,6 +43,9 @@ module eml_unit (
     reg        overflow_flag;
     reg        nan_flag;
     reg        exc_depth;
+
+    // Expose pipeline stage for status register
+    assign o_stage = current_stage;
 
     // Memo cache parameters
     localparam MEMO_SIZE = 7;  // 128 entries (2^7)

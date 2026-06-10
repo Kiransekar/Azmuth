@@ -16,7 +16,13 @@ module xcew_top_v1_1 (
     output wire         o_irq_nvm,
     output wire         o_irq_fault,
     output wire [7:0]   o_debug_uart,
-    output wire [31:0]  o_debug_status
+    output wire [31:0]  o_debug_status,
+    input  wire         i_jtag_tck,
+    input  wire         i_jtag_tms,
+    input  wire         i_jtag_tdi,
+    output wire         o_jtag_tdo,
+    input  wire         i_jtag_trst_n,
+    input  wire         i_debug_en
 );
 
     // =========================================================================
@@ -33,6 +39,99 @@ module xcew_top_v1_1 (
     wire clk_eml_gated   = clk_core & ~tile_sleep_eml;
     wire clk_snn_gated   = clk_snn  & ~tile_sleep_snn;
     wire clk_nvm_gated   = clk_core & ~tile_sleep_nvm;
+
+    // =========================================================================
+    // CDC: Core ↔ SNN domain synchronizers
+    // =========================================================================
+    // Reset synchronizer for SNN domain (async assert, sync deassert)
+    wire rst_snn;
+    cdc_reset_sync u_rst_snn_sync (
+        .clk_dst(clk_snn),
+        .rst_src(rst),
+        .rst_dst(rst_snn)
+    );
+
+    // Core → SNN control pulses (C1, C2)
+    wire snn_classify_en_sync;
+    wire snn_current_valid_sync;
+    cdc_pulse_sync u_sync_classify_en (
+        .clk_src(clk_core_gated), .rst_src(rst),
+        .clk_dst(clk_snn_gated),  .rst_dst(rst_snn),
+        .pulse_src(snn_classify_en_int),
+        .pulse_dst(snn_classify_en_sync)
+    );
+    cdc_pulse_sync u_sync_current_valid (
+        .clk_src(clk_core_gated), .rst_src(rst),
+        .clk_dst(clk_snn_gated),  .rst_dst(rst_snn),
+        .pulse_src(snn_current_valid_int),
+        .pulse_dst(snn_current_valid_sync)
+    );
+
+    // Core → SNN multi-bit data (C3): input_current[31:0] + neuron_idx[7:0]
+    // Packed into 40-bit handshake
+    wire [39:0] snn_data_src = {core_rs2_data[7:0], core_rs1_data};
+    wire        snn_data_req_src = snn_current_valid_int;
+    wire        snn_data_ack_src;
+    wire [39:0] snn_data_dst;
+    wire        snn_data_valid_dst;
+    cdc_data_sync #(.WIDTH(40)) u_sync_snn_data (
+        .clk_src(clk_core_gated), .rst_src(rst),
+        .clk_dst(clk_snn_gated),  .rst_dst(rst_snn),
+        .data_src(snn_data_src),
+        .req_src(snn_data_req_src),
+        .ack_src(snn_data_ack_src),
+        .data_dst(snn_data_dst),
+        .valid_dst(snn_data_valid_dst),
+        .ready_dst(1'b1)
+    );
+
+    wire [31:0] snn_input_current_sync = snn_data_dst[31:0];
+    wire [7:0]  snn_neuron_idx_sync    = snn_data_dst[39:32];
+
+    // Core → SNN config (C4): quasi-static, written while SNN idle, then applied
+    // Config is written via CSR (snn_ctrl_ext), only needs sync on 'apply' strobe
+    wire snn_config_apply_sync;
+    cdc_pulse_sync u_sync_config_apply (
+        .clk_src(clk_core_gated), .rst_src(rst),
+        .clk_dst(clk_snn_gated),  .rst_dst(rst_snn),
+        .pulse_src(core_csr_wr_en & (core_csr_addr == 12'h7C5)),
+        .pulse_dst(snn_config_apply_sync)
+    );
+
+    // SNN → Core status (C5): o_done, o_ready
+    wire snn_done_sync;
+    wire snn_ready_sync;
+    cdc_sync_2ff u_sync_done (
+        .clk_dst(clk_core_gated), .rst_dst(rst),
+        .sig_src(snn_done_int),
+        .sig_dst(snn_done_sync)
+    );
+    cdc_sync_2ff u_sync_ready (
+        .clk_dst(clk_core_gated), .rst_dst(rst),
+        .sig_src(snn_ready_int),
+        .sig_dst(snn_ready_sync)
+    );
+
+    // SNN → Core multi-bit results (C6): o_class[7:0], o_conf[15:0]
+    // Latch in SNN domain when done asserts, read in core domain after done_sync
+    wire [23:0] snn_result_src = {snn_conf_int, snn_class_int};
+    wire        snn_result_req_src = snn_done_int;
+    wire        snn_result_ack_src;
+    wire [23:0] snn_result_dst;
+    wire        snn_result_valid_dst;
+    cdc_data_sync #(.WIDTH(24)) u_sync_snn_result (
+        .clk_src(clk_snn_gated), .rst_src(rst_snn),
+        .clk_dst(clk_core_gated), .rst_dst(rst),
+        .data_src(snn_result_src),
+        .req_src(snn_result_req_src),
+        .ack_src(snn_result_ack_src),
+        .data_dst(snn_result_dst),
+        .valid_dst(snn_result_valid_dst),
+        .ready_dst(1'b1)
+    );
+
+    wire [7:0]  snn_class_sync  = snn_result_dst[7:0];
+    wire [15:0] snn_conf_sync   = snn_result_dst[23:8];
 
     // =========================================================================
     // v1.1 feature enable
@@ -55,6 +154,9 @@ module xcew_top_v1_1 (
     reg [31:0] csr_sec_ctrl;
     reg [31:0] csr_pol_sec;
     reg [31:0] csr_fault_status_reg;
+    reg [31:0] csr_watchdog_timeout;
+    reg [31:0] csr_ecc_scrub_count;
+    reg [31:0] csr_ecc_corrected_count;
 
     // Sub-module CSR interface wires (driven by sub-modules on CSR access)
     wire [31:0] pwr_csr_rd_if;
@@ -222,6 +324,7 @@ module xcew_top_v1_1 (
     wire        eml_valid_out_int;
     wire        eml_ready_int;
     wire        eml_exc_int;
+    wire [2:0]  eml_stage_int;
 
     // EML DAG cache
     wire [31:0] eml_expr_hash_in, eml_expr_result_in;
@@ -306,6 +409,9 @@ module xcew_top_v1_1 (
     wire csr_is_sec_ctrl   = (core_csr_addr == 12'h7CA);
     wire csr_is_pol_sec    = (core_csr_addr == 12'h7CB);
     wire csr_is_fault_sts  = (core_csr_addr == 12'h7CC);
+    wire csr_is_watchdog   = (core_csr_addr == 12'h7CD);
+    wire csr_is_ecc_scrub  = (core_csr_addr == 12'h7CE);
+    wire csr_is_ecc_corr   = (core_csr_addr == 12'h7CF);
 
     // =========================================================================
     // CSR read multiplexer
@@ -320,6 +426,9 @@ module xcew_top_v1_1 (
         csr_is_sec_ctrl    ? csr_sec_ctrl     :
         csr_is_pol_sec     ? csr_pol_sec      :
         csr_is_fault_sts   ? csr_fault_status :
+        csr_is_watchdog    ? csr_watchdog_timeout :
+        csr_is_ecc_scrub   ? csr_ecc_scrub_count :
+        csr_is_ecc_corr    ? csr_ecc_corrected_count :
         32'h0;
 
     // =========================================================================
@@ -336,6 +445,9 @@ module xcew_top_v1_1 (
             csr_sec_ctrl      <= 32'h0;
             csr_pol_sec       <= 32'h0;
             csr_fault_status_reg <= 32'h0;
+            csr_watchdog_timeout <= 32'hFFFF;  // Default 65535 cycles
+            csr_ecc_scrub_count <= 32'h0;
+            csr_ecc_corrected_count <= 32'h0;
         end else begin
             if (core_csr_wr_en) begin
                 case (core_csr_addr)
@@ -351,6 +463,9 @@ module xcew_top_v1_1 (
                     12'h7CA: if (v1_1_en) csr_sec_ctrl <= core_csr_wr_data;
                     12'h7CB: if (v1_1_en) csr_pol_sec <= core_csr_wr_data;
                     12'h7CC: if (v1_1_en) csr_fault_status_reg <= csr_fault_status_reg & ~core_csr_wr_data;
+                    12'h7CD: if (v1_1_en) csr_watchdog_timeout <= core_csr_wr_data;
+                    12'h7CE: if (v1_1_en) csr_ecc_scrub_count <= core_csr_wr_data;
+                    12'h7CF: if (v1_1_en) csr_ecc_corrected_count <= core_csr_wr_data;
                     default: ;
                 endcase
             end
@@ -360,6 +475,23 @@ module xcew_top_v1_1 (
     // =========================================================================
     // RISC-V Core
     // =========================================================================
+    wire        dm_halt_req;
+    wire        dm_resume_req;
+    wire        dm_reset_req;
+    wire        core_halted;
+    wire        core_running;
+    wire        trigger_hit;
+    wire [31:0] csr_dcsr;
+    wire [31:0] csr_dpc;
+    wire [31:0] csr_dscratch0;
+    wire [31:0] csr_dscratch1;
+    wire        core_reg_req;
+    wire        core_reg_wr;
+    wire [15:0] core_reg_addr_16;
+    wire [31:0] core_reg_wdata;
+    wire [31:0] core_reg_rdata;
+    wire        core_reg_ack;
+
     riscv_core core_inst (
         .clk(clk_core_gated),
         .rst(rst),
@@ -387,14 +519,40 @@ module xcew_top_v1_1 (
         .o_rs2_data(core_rs2_data),
         .wb_stall(core_wb_stall),
         .exception(core_exception),
-        .interrupt(core_interrupt)
+        .interrupt(core_interrupt),
+        // Debug Interface
+        .i_dm_halt_req(dm_halt_req),
+        .i_dm_resume_req(dm_resume_req),
+        .i_dm_reset_req(dm_reset_req),
+        .o_dm_halted(core_halted),
+        .o_dm_running(core_running),
+        .o_dm_has_reset(),
+        .o_dm_pc(),
+        .i_debug_trigger_hit(trigger_hit),
+        .o_csr_dcsr(csr_dcsr),
+        .o_csr_dpc(csr_dpc),
+        .o_csr_dscratch0(csr_dscratch0),
+        .o_csr_dscratch1(csr_dscratch1),
+        .i_dbg_reg_req(core_reg_req),
+        .i_dbg_reg_wr(core_reg_wr),
+        .i_dbg_reg_addr(core_reg_addr_16[11:0]),
+        .i_dbg_reg_wdata(core_reg_wdata),
+        .o_dbg_reg_rdata(core_reg_rdata),
+        .o_dbg_reg_ack(core_reg_ack)
     );
 
-    assign core_instr = (core_pc[12:2] < 11'd1024) ? instr_rom[core_pc[11:2]] : 32'h00000013;
+    wire [31:0] debug_rom_instr_int;
+    wire [11:0] debug_rom_addr_int;
+    assign core_instr = (core_pc[31:12] == 20'h00000 && core_pc[11:8] == 4'h8) ? debug_rom_instr_int :
+                        (core_pc[12:2] < 11'd1024) ? instr_rom[core_pc[11:2]] : 32'h00000013;
 
     // =========================================================================
     // AXI4-Lite Interconnect (v1.1)
     // =========================================================================
+    wire        s5_awvalid_wire;
+    wire        s5_wvalid_wire;
+    wire        s5_arvalid_wire;
+
     axi_lite_interconnect_v1_1 interconnect_inst (
         .aclk(clk_core_gated),
         .aresetn(rst_n),
@@ -427,6 +585,13 @@ module xcew_top_v1_1 (
         .m3_bresp(dummy_bresp),   .m3_bvalid(dummy_bvalid),  .m3_bready(dummy_bready),
         .m3_araddr(dummy_araddr), .m3_arvalid(dummy_arvalid), .m3_arready(dummy_arready),
         .m3_rdata(dummy_rdata),   .m3_rresp(dummy_rresp),    .m3_rvalid(dummy_rvalid), .m3_rready(dummy_rready),
+
+        // Master 4: DM
+        .m4_awaddr(16'h0),    .m4_awvalid(1'b0),   .m4_awready(),
+        .m4_wdata(32'h0),     .m4_wstrb(4'h0),     .m4_wvalid(1'b0),    .m4_wready(),
+        .m4_bresp(),          .m4_bvalid(),        .m4_bready(1'b0),
+        .m4_araddr(16'h0),    .m4_arvalid(1'b0),   .m4_arready(),
+        .m4_rdata(),          .m4_rresp(),         .m4_rvalid(),        .m4_rready(1'b0),
 
         // Slave 0: Boot ROM
         .s0_awaddr(s0_awaddr), .s0_awvalid(s0_awvalid), .s0_awready(s0_awready),
@@ -466,7 +631,14 @@ module xcew_top_v1_1 (
         .s4_wready(s4_wready), .s4_bresp(s4_bresp),   .s4_bvalid(s4_bvalid),
         .s4_bready(s4_bready), .s4_araddr(s4_araddr), .s4_arvalid(s4_arvalid),
         .s4_arready(s4_arready), .s4_rdata(s4_rdata), .s4_rresp(s4_rresp),
-        .s4_rvalid(s4_rvalid), .s4_rready(s4_rready)
+        .s4_rvalid(s4_rvalid), .s4_rready(s4_rready),
+
+        // Slave 5: DM
+        .s5_awaddr(),         .s5_awvalid(s5_awvalid_wire),       .s5_awready(1'b1),
+        .s5_wdata(),          .s5_wstrb(),         .s5_wvalid(s5_wvalid_wire),        .s5_wready(1'b1),
+        .s5_bresp(2'b00),     .s5_bvalid(s5_awvalid_wire & s5_wvalid_wire),    .s5_bready(),
+        .s5_araddr(),         .s5_arvalid(s5_arvalid_wire),       .s5_arready(1'b1),
+        .s5_rdata(32'h0),     .s5_rresp(2'b00),    .s5_rvalid(s5_arvalid_wire),    .s5_rready()
     );
 
     // =========================================================================
@@ -519,7 +691,8 @@ module xcew_top_v1_1 (
         .o_rd(eml_rd_raw),
         .o_valid(eml_valid_out_int),
         .o_ready(eml_ready_int),
-        .o_exc(eml_exc_int)
+        .o_exc(eml_exc_int),
+        .o_stage(eml_stage_int)
     );
 
     // EML DAG Cache
@@ -628,16 +801,16 @@ module xcew_top_v1_1 (
 
     snn_tile_256 #(.NUM_NEURONS(256)) snn_inst (
         .i_clk_snn(clk_snn_gated),
-        .i_rst(rst),
-        .i_classify_en(snn_classify_en_int),
+        .i_rst(rst_snn),
+        .i_classify_en(snn_classify_en_sync),
         .i_ttfs_enable(snn_ttfs_enable_int),
         .i_t_window(snn_t_window_int),
         .i_refractory_cycles(snn_refractory_cycles_int),
         .i_v_threshold(32'h40000000),
         .i_v_rest(32'h0),
-        .i_input_current(snn_input_current_int),
-        .i_neuron_idx(snn_neuron_idx_int),
-        .i_current_valid(snn_current_valid_int),
+        .i_input_current(snn_input_current_sync),
+        .i_neuron_idx(snn_neuron_idx_sync),
+        .i_current_valid(snn_data_valid_dst),
         .o_class(snn_class_int),
         .o_conf(snn_conf_int),
         .o_done(snn_done_int),
@@ -769,7 +942,7 @@ module xcew_top_v1_1 (
         .clk(clk_core_gated),
         .rst(rst),
         .eml_pipe_active(eml_valid_int),
-        .snn_pipe_active(snn_classify_en_int),
+        .snn_pipe_active(snn_classify_en_sync),
         .nvm_pipe_active(nvm_wr_en_int | nvm_rd_en_int),
         .csr_access_active(core_csr_wr_en),
         .instr_fetch_active(1'b1),
@@ -799,7 +972,8 @@ module xcew_top_v1_1 (
         if (rst) begin
             csr_xcew_status <= 32'h0;
         end else begin
-            csr_xcew_status[31:4] <= 28'h0;
+            csr_xcew_status[31:7] <= 25'h0;
+            csr_xcew_status[6:4]  <= eml_stage_int;  // EML pipeline stage
             csr_xcew_status[3]    <= o_irq_eml | o_irq_snn | o_irq_fault;
             csr_xcew_status[2]    <= nvm_busy_int;
             csr_xcew_status[1]    <= eml_exc_int;
@@ -835,7 +1009,7 @@ module xcew_top_v1_1 (
         error_code_int,
         tile_sleep_int,
         leakage_ready_int,
-        snn_done_int,
+        snn_done_sync,
         nvm_busy_int,
         eml_valid_out_int,
         eml_cache_hit,
@@ -844,5 +1018,98 @@ module xcew_top_v1_1 (
         core_interrupt,
         core_exception | core_addr_fault
     };
+
+    // =========================================================================
+    // JTAG DTM and Debug Module Subsystem Integration
+    // =========================================================================
+    wire dmi_req_tck;
+    wire dmi_wr_tck;
+    wire [6:0] dmi_addr_tck;
+    wire [31:0] dmi_wdata_tck;
+    wire [31:0] dmi_rdata_tck;
+    wire dmi_ack_tck;
+
+    dtm_top dtm_inst (
+        .tck(i_jtag_tck),
+        .tms(i_jtag_tms),
+        .tdi(i_jtag_tdi),
+        .tdo(o_jtag_tdo),
+        .trst_n(i_jtag_trst_n),
+        .dmi_req(dmi_req_tck),
+        .dmi_wr(dmi_wr_tck),
+        .dmi_addr(dmi_addr_tck),
+        .dmi_wdata(dmi_wdata_tck),
+        .dmi_rdata(dmi_rdata_tck),
+        .dmi_ack(dmi_ack_tck),
+        .debug_en(i_debug_en)
+    );
+
+    // DMI CDC: TCK -> Core
+    wire [39:0] dmi_req_data_tck = {dmi_wr_tck, dmi_addr_tck, dmi_wdata_tck};
+    wire [39:0] dmi_req_data_core;
+    wire        dmi_req_core;
+    wire        dmi_ack_core;
+    cdc_data_sync #(.WIDTH(40)) u_dmi_req_cdc (
+        .clk_src(i_jtag_tck),
+        .rst_src(~i_jtag_trst_n),
+        .clk_dst(clk_core_gated),
+        .rst_dst(rst),
+        .data_src(dmi_req_data_tck),
+        .req_src(dmi_req_tck),
+        .ack_src(),
+        .data_dst(dmi_req_data_core),
+        .valid_dst(dmi_req_core),
+        .ready_dst(dmi_ack_core)
+    );
+
+    wire        dmi_wr_core    = dmi_req_data_core[39];
+    wire [6:0]  dmi_addr_core  = dmi_req_data_core[38:32];
+    wire [31:0] dmi_wdata_core = dmi_req_data_core[31:0];
+    wire [31:0] dmi_rdata_core;
+
+    // DMI CDC: Core -> TCK
+    cdc_data_sync #(.WIDTH(32)) u_dmi_resp_cdc (
+        .clk_src(clk_core_gated),
+        .rst_src(rst),
+        .clk_dst(i_jtag_tck),
+        .rst_dst(~i_jtag_trst_n),
+        .data_src(dmi_rdata_core),
+        .req_src(dmi_ack_core),
+        .ack_src(),
+        .data_dst(dmi_rdata_tck),
+        .valid_dst(dmi_ack_tck),
+        .ready_dst(1'b1)
+    );
+
+    dm_top dm_inst (
+        .clk(clk_core_gated),
+        .rst_n(rst_n),
+        .dmi_req(dmi_req_core),
+        .dmi_wr(dmi_wr_core),
+        .dmi_addr(dmi_addr_core),
+        .dmi_wdata(dmi_wdata_core),
+        .dmi_rdata(dmi_rdata_core),
+        .dmi_ack(dmi_ack_core),
+        .core_pc(core_pc),
+        .core_halted(core_halted),
+        .core_running(core_running),
+        .core_has_reset(1'b0),
+        .dm_halt_req(dm_halt_req),
+        .dm_resume_req(dm_resume_req),
+        .dm_reset_req(dm_reset_req),
+        .dm_ndmreset(),
+        .dm_hartsel(),
+        .core_reg_req(core_reg_req),
+        .core_reg_wr(core_reg_wr),
+        .core_reg_addr(core_reg_addr_16),
+        .core_reg_wdata(core_reg_wdata),
+        .core_reg_rdata(core_reg_rdata),
+        .core_reg_ack(core_reg_ack),
+        .progbuf0(),
+        .progbuf1(),
+        .trigger_hit(trigger_hit),
+        .debug_rom_addr(debug_rom_addr_int),
+        .debug_rom_instr(debug_rom_instr_int)
+    );
 
 endmodule

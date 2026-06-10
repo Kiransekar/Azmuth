@@ -19,10 +19,16 @@ module xcie_csr (
     // CSR addresses
     localparam XCEW_CFG_ADDR   = 12'h7C0;  // Configuration register
     localparam XCEW_STATUS_ADDR = 12'h7C1; // Status register
+    localparam XCEW_WATCHDOG_TIMEOUT = 12'h7CD;  // Watchdog timeout value
+    localparam XCEW_ECC_SCRUB_COUNT = 12'h7CE;   // ECC scrub count
+    localparam XCEW_ECC_CORRECTED_COUNT = 12'h7CF; // ECC corrected count
 
     // Internal CSR storage
     reg [31:0] xcew_cfg_reg;   // RW - Configuration register
-    reg [31:0] xcew_status_reg; // RO - Status register
+    reg [31:0] xcew_status_reg; // RO - Status register (live updated)
+    reg [31:0] watchdog_timeout_reg;  // RW - Watchdog timeout value
+    reg [31:0] ecc_scrub_count_reg;   // RW - ECC scrub count
+    reg [31:0] ecc_corrected_count_reg; // RW - ECC corrected count
 
     // Configuration register bit definitions
     // [31:16] - Reserved (read as 0)
@@ -44,6 +50,9 @@ module xcie_csr (
         if (i_rst) begin
             xcew_cfg_reg <= 32'h0000_0000;  // Default configuration
             xcew_status_reg <= 32'h0000_0000;  // Default status
+            watchdog_timeout_reg <= 32'h0000_FFFF;  // Default timeout: 65535 cycles
+            ecc_scrub_count_reg <= 32'h0000_0000;
+            ecc_corrected_count_reg <= 32'h0000_0000;
         end else begin
             if (i_wr_en) begin
                 case (i_rd_addr)
@@ -55,6 +64,15 @@ module xcie_csr (
                                          i_wr_data[11:8],                    // [11:8] PRECISION
                                          i_wr_data[7],                       // [7] BRANCH_CUT
                                          7'h0};                             // [6:0] Reserved
+                    end
+                    XCEW_WATCHDOG_TIMEOUT: begin
+                        watchdog_timeout_reg <= i_wr_data;
+                    end
+                    XCEW_ECC_SCRUB_COUNT: begin
+                        ecc_scrub_count_reg <= i_wr_data;
+                    end
+                    XCEW_ECC_CORRECTED_COUNT: begin
+                        ecc_corrected_count_reg <= i_wr_data;
                     end
                     // XCEW_STATUS_ADDR is read-only, so no write action
                     default: begin
@@ -69,8 +87,11 @@ module xcie_csr (
     always @(*) begin
         case (i_rd_addr)
             XCEW_CFG_ADDR:   o_rd_data = xcew_cfg_reg;
-            XCEW_STATUS_ADDR: o_rd_data = xcew_status_reg;  // Note: this would normally be updated with real status signals
-            default:         o_rd_data = 32'h0;  // Return 0 for undefined CSRs
+            XCEW_STATUS_ADDR: o_rd_data = xcew_status_reg;
+            XCEW_WATCHDOG_TIMEOUT: o_rd_data = watchdog_timeout_reg;
+            XCEW_ECC_SCRUB_COUNT: o_rd_data = ecc_scrub_count_reg;
+            XCEW_ECC_CORRECTED_COUNT: o_rd_data = ecc_corrected_count_reg;
+            default:         o_rd_data = 32'h0;
         endcase
     end
 

@@ -42,7 +42,8 @@ RTL_FILES = $(RTL_DIR)/$(TOP_MODULE).v \
           $(RTL_DIR)/power/orchestrator.v \
           $(RTL_DIR)/power/body_bias_ctrl.v \
           $(RTL_DIR)/security/fault_monitor.v \
-          $(RTL_DIR)/soc/axi_lite_interconnect_v1_1.v
+          $(RTL_DIR)/soc/axi_lite_interconnect_v1_1.v \
+           $(RTL_DIR)/soc/cdc_sync.v
 
 # Default target
 .PHONY: all

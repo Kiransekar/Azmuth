@@ -31,7 +31,13 @@ module xcew_top_v1_1_tb;
         .o_irq_nvm(o_irq_nvm),
         .o_irq_fault(o_irq_fault),
         .o_debug_uart(o_debug_uart),
-        .o_debug_status(o_debug_status)
+        .o_debug_status(o_debug_status),
+        .i_jtag_tck(1'b0),
+        .i_jtag_tms(1'b0),
+        .i_jtag_tdi(1'b0),
+        .o_jtag_tdo(),
+        .i_jtag_trst_n(1'b1),
+        .i_debug_en(1'b0)
     );
 
     // Clocks: 4ns half-period = 250MHz core, 8ns half-period = 125MHz SNN

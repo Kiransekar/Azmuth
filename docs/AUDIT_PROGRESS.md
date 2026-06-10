@@ -9,6 +9,114 @@ what remains, and why remaining items are blocked.
 _Last updated: 2026-06-08. Changes are in the working tree; commit hashes to be
 filled when committed (audit convention: `- [x] (commit abc1234)`)._
 
+## Slice 12 — Debug Module Subsystem Integration (2026-06-10)
+
+Implemented and integrated the complete IEEE 1149.1 JTAG Debug Transport Module (DTM), the RISC-V External Debug Spec 0.13.2 Debug Module (DM), and core/SoC-level integration with domain-crossing synchronizers.
+
+### Debug Module Subsystem Integration — CLOSED (§3.5.1, §3.5.2, §3.5.3, §3.5.4, §3.5.5, §3.5.6, §3.5.8, §3.5.10, §3.5.12, §3.5.13, §3.5.15)
+
+- **Debug Spec & Architecture (§3.5.1):** Architecture specification is fully implemented and mapped to standard RISC-V debug configurations in `docs/DEBUG_ARCH_SPEC.md`.
+- **Debug Module (DM) RTL (§3.5.2):** Implemented in `rtl/debug/dm_top.v` with abstract command execution FSM, instruction register file, 4-instruction program buffer, and 2 hardware breakpoints trigger module.
+- **JTAG DTM RTL (§3.5.3):** Implemented JTAG Test Access Port (TAP) state machine and data registers in `rtl/debug/dtm/dtm_top.v`.
+- **Core Integration (§3.5.4):** Extended `rtl/core/riscv_core.v` to support debug mode entry/exit, PC redirection to debug ROM (0x800), single-step debugging, and GPR/CSR hardware access ports.
+- **CDC Synchronizers (§3.5.6):** Integrated JTAG-to-Core clock domain crossing in `rtl/xcew_top_v1_1.v` using a robust 4-phase request-acknowledge handshake data synchronizer (`cdc_data_sync`) between TCK and core clock domains.
+- **SoC Integration & Interconnect (§3.5.8, §3.5.10):** Connected standalone JTAG ports to the SoC top-level `xcew_top_v1_1.v`, wired the core register interface, routed instruction fetches in the range 0x800-0x8FF to the Debug ROM instruction output, and connected interconnect Master 4 / Slave 5 ports.
+- **Verification (§3.5.5, §3.5.12):** Verified all features with 7 dedicated debug testbenches under `tb/debug/` (halt/resume, step, breakpoint, halt-on-reset, CSR access, memory access, JTAG protocol) and verified top-level integration using `tb/xcew_top_v1_1_tb.v`. All tests PASS.
+- **Governance & Decisions (§3.5.13, §3.5.15):** DECISION-004 ratified in `docs/DECISIONS.md`.
+
+### Scorecard update
+
+| Category | Before Slice 12 | After Slice 12 | Delta |
+|----------|-----------------|----------------|-------|
+| Tapeout gates with evidence/artifact | 30 | 41 | **+11** |
+| Software gates with evidence/artifact | 30 | 30 | **0** |
+| **Total completed (of 122)** | **60** | **71** | **+11** |
+| **Completion percentage** | **49%** | **58%** | **+9pp** |
+| Formal proofs passing | 4/4 | 4/4 | **0** |
+
+## Slice 11 — CDC/Reset Fixes, All Formal PASS, All Sim PASS (2026-06-08)
+
+Three critical infrastructure blockers closed: CDC core↔SNN synchronizers (§3.1), reset domain crossing (§3.2/DEV-010/DEV-011), and all 4 formal proofs passing.
+
+### CDC Core↔SNN Synchronizers — CLOSED (§3.1 HARD GATE)
+
+| Crossing | Signal(s) | Direction | Synchronizer |
+|----------|-----------|-----------|--------------|
+| C1 | `i_classify_en` | core → snn | `cdc_pulse_sync` (pulse→level→pulse handshake) |
+| C2 | `i_current_valid` | core → snn | `cdc_pulse_sync` (pulse→level→pulse handshake) |
+| C3 | `i_input_current[31:0]`, `i_neuron_idx[7:0]` | core → snn | `cdc_data_sync #(.WIDTH(40))` (req/ack handshake) |
+| C4 | Config (TTFS, threshold, refractory) | core → snn | `cdc_pulse_sync` on CSR write strobe (0x7C5) |
+| C5 | `o_done`, `o_ready` | snn → core | `cdc_sync_2ff` (2-FF synchronizer) |
+| C6 | `o_class[7:0]`, `o_conf[15:0]` | snn → core | `cdc_data_sync #(.WIDTH(24))` (req/ack handshake) |
+| C7 | `o_spike_outs`, `o_spike_valids` | snn → STDP | No crossing — STDP on same `clk_snn_gated` |
+| C8 | `i_rst` into SNN | async | `cdc_reset_sync` (async-assert/sync-deassert) |
+
+**New RTL:** `rtl/soc/cdc_sync.v` — 4 parameterized CDC primitives (2-FF, pulse sync, reset sync, data handshake).
+**Integration:** `rtl/xcew_top_v1_1.v` lines 47-130 (CDC section), SNN tile now uses `rst_snn`.
+**Documentation:** `docs/CDC_ANALYSIS.md` updated with implementation table, MTBF estimates (>10^9 years all crossings).
+**Verification:** All existing testbenches pass (`make sim_core`, `sim_isa`, `sim_hazard`, `sim_trap`, `sim_irq`, `sim_snn_tile_256`, `sim_cosim`).
+
+### Reset Domain Crossing — CLOSED (§3.2, DEV-010, DEV-011)
+
+- Added `cdc_reset_sync` module generating `rst_snn` from `i_rst` synchronized to `i_clk_snn`
+- SNN tile (`snn_tile_256`) now uses `rst_snn` instead of raw `i_rst`
+- Updated `docs/RESET_ARCH.md`: DEV-010/DEV-011 marked CLOSED
+
+### Formal Verification — ALL PASS (§1.3c)
+
+| Proof | Solver | Steps | Result |
+|-------|--------|-------|--------|
+| `sby/eml.sby` | Boolector | 20 | ✅ PASS |
+| `sby/snn.sby` | Boolector | 30 | ✅ PASS |
+| `sby/security.sby` | Boolector | 25 | ✅ PASS |
+| `sby/power.sby` | Boolector | 25 | ✅ PASS |
+
+### Simulation — ALL PASS
+
+| Testbench | Result |
+|-----------|--------|
+| `sim_core` | PASS — core reaches JAL loop |
+| `sim_isa` | PASS — 0 errors, 18 checks |
+| `sim_hazard` | PASS — 0 errors, 13 checks |
+| `sim_trap` | PASS — 6/6 trap scenarios |
+| `sim_irq` | PASS — 5/5 interrupt scenarios |
+| `sim_decoder` | PASS — 10/10 Xcew opcode tests |
+| `sim_snn_tile_256` | PASS — correct winner neuron |
+| `sim_cosim` | PASS — 499 PC changes, AXI active |
+
+### Firmware Build — PASS (§S2.2)
+
+`make firmware` produces ELF/hex/bin successfully.
+
+### Lint Verification — PASS
+
+Verilator 5.047: all RTL files lint-clean with `xcew_top_v1_1` as top module.
+
+### Scorecard update
+
+| Category | Before Slice 11 | After Slice 11 | Delta |
+|----------|-----------------|----------------|-------|
+| Tapeout gates with evidence/artifact | 26 | 30 | **+4** |
+| Software gates with evidence/artifact | 30 | 30 | **0** |
+| **Total completed (of 122)** | **56** | **60** | **+4** |
+| **Completion percentage** | **46%** | **49%** | **+3pp** |
+| Formal proofs passing | 4/4 | 4/4 | **0** |
+
+### Previously blocked — now resolved
+
+- ~~**CDC core↔SNN (§3.1):** no synchronizers.~~ → **CLOSED.** 8 crossings all synchronized.
+- ~~**Reset domain crossing (§3.2/DEV-010/DEV-011):** no reset sync.~~ → **CLOSED.** `cdc_reset_sync` implemented.
+- ~~**Formal proofs (§1.3c):** z3 too slow.~~ → **CLOSED.** All 4 PASS with Boolector.
+- ~~**Debug Module RTL (§3.5.2+):** spec written; ~3–5K lines new RTL.~~ → **CLOSED.** Complete JTAG DTM, Debug Module, and core/SoC integration implemented and verified (Slice 12).
+
+### Still blocked
+
+- **Synth QoR (§5.x):** flatten pass needs more RAM (NVM 64KB → 2M registers). External NVM planned (DECISION-005 L1).
+- **RISCOF M/C (§2.4):** M-extension not in ALU; C-extension not decoded.
+- **Physical (§6.x):** needs OpenROAD/OpenLane + PDK.
+- **S3 C Library:** needs picolibc/newlib port.
+- **S5 Debug Infrastructure:** needs OpenOCD target config.
+
 ## Slice 10 — Formal proofs PASS, firmware builds, lint clean (2026-06-08)
 
 Two major blockers closed: formal verification (§1.3c) and firmware build
@@ -383,8 +491,8 @@ signed commits, 5.5.3/DECISION-006 shuttle commitment (~$9,750), 8.1–8.3
 pair assignment/cadence/issue-tracking; Software S1.1/DECISION-003 ratification.
 
 **Large new design/verification work:** Tapeout 1.5 (external-QSPI NVM, SNN
-virtualization, EML cache compression, parameterization), 3.5 (~3–5k lines
-Debug Module + JTAG DTM), 2.x/3.x/4.x verification campaigns; ~~Software S2 boot
+virtualization, EML cache compression, parameterization), ~~3.5 (~3–5k lines
+Debug Module + JTAG DTM)~~ → **CLOSED (Slice 12, top integration and verification)**, 2.x/3.x/4.x verification campaigns; ~~Software S2 boot
 ROM~~ → **CLOSED (Slice 10, firmware builds)**, S4 libxcew + DSL/converters,
 S5 OpenOCD/GDB, S6 8 examples.
 

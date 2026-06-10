@@ -39,6 +39,13 @@ module axi_lite_interconnect_v1_1 (
     input  wire [15:0] m3_araddr,  input  wire        m3_arvalid, output reg        m3_arready,
     output reg  [31:0] m3_rdata,   output reg  [1:0]  m3_rresp,   output reg        m3_rvalid, input  wire        m3_rready,
 
+    // Master 4 (Debug Module SBA)
+    input  wire [15:0] m4_awaddr,  input  wire        m4_awvalid, output reg        m4_awready,
+    input  wire [31:0] m4_wdata,   input  wire [3:0]  m4_wstrb,   input  wire        m4_wvalid, output reg        m4_wready,
+    output reg  [1:0]  m4_bresp,   output reg         m4_bvalid,  input  wire        m4_bready,
+    input  wire [15:0] m4_araddr,  input  wire        m4_arvalid, output reg        m4_arready,
+    output reg  [31:0] m4_rdata,   output reg  [1:0]  m4_rresp,   output reg        m4_rvalid, input  wire        m4_rready,
+
     // Slave 0 (Boot ROM)
     output reg  [15:0] s0_awaddr,  output reg         s0_awvalid, input  wire        s0_awready,
     output reg  [31:0] s0_wdata,   output reg  [3:0]  s0_wstrb,   output reg        s0_wvalid, input  wire        s0_wready,
@@ -72,7 +79,14 @@ module axi_lite_interconnect_v1_1 (
     output reg  [31:0] s4_wdata,   output reg  [3:0]  s4_wstrb,   output reg        s4_wvalid, input  wire        s4_wready,
     input  wire  [1:0] s4_bresp,   input  wire        s4_bvalid,  output reg        s4_bready,
     output reg  [15:0] s4_araddr,  output reg         s4_arvalid, input  wire        s4_arready,
-    input  wire  [31:0] s4_rdata,  input  wire  [1:0] s4_rresp,   input  wire        s4_rvalid, output reg        s4_rready
+    input  wire  [31:0] s4_rdata,  input  wire  [1:0] s4_rresp,   input  wire        s4_rvalid, output reg        s4_rready,
+
+    // Slave 5 (Debug Module CSR)
+    output reg  [15:0] s5_awaddr,  output reg         s5_awvalid, input  wire        s5_awready,
+    output reg  [31:0] s5_wdata,   output reg  [3:0]  s5_wstrb,   output reg        s5_wvalid, input  wire        s5_wready,
+    input  wire  [1:0] s5_bresp,   input  wire        s5_bvalid,  output reg        s5_bready,
+    output reg  [15:0] s5_araddr,  output reg         s5_arvalid, input  wire        s5_arready,
+    input  wire  [31:0] s5_rdata,  input  wire  [1:0] s5_rresp,   input  wire        s5_rvalid, output reg        s5_rready
 );
 
     wire rst = ~aresetn;
@@ -83,15 +97,17 @@ module axi_lite_interconnect_v1_1 (
     parameter [15:0] EML_BASE  = 16'h2000, EML_END  = 16'h20FF;
     parameter [15:0] SNN_BASE  = 16'h2100, SNN_END  = 16'h21FF;
     parameter [15:0] NVM_BASE  = 16'h2200, NVM_END  = 16'h22FF;
+    parameter [15:0] DM_BASE   = 16'h5000, DM_END   = 16'h5FFF;
 
-    // Slave one-hot
-    parameter [4:0] SLAVE_ROM  = 5'b00001, SLAVE_SRAM = 5'b00010;
-    parameter [4:0] SLAVE_EML  = 5'b00100, SLAVE_SNN  = 5'b01000;
-    parameter [4:0] SLAVE_NVM  = 5'b10000;
+    // Slave one-hot (6 slaves now with Debug Module)
+    parameter [5:0] SLAVE_ROM  = 6'b000001, SLAVE_SRAM = 6'b000010;
+    parameter [5:0] SLAVE_EML  = 6'b000100, SLAVE_SNN  = 6'b001000;
+    parameter [5:0] SLAVE_NVM  = 6'b010000, SLAVE_DM   = 6'b100000;
 
     // ==================== Address Decoder ====================
-    reg [4:0] m0_aw_slave, m0_ar_slave, m1_aw_slave, m1_ar_slave;
-    reg [4:0] m2_aw_slave, m2_ar_slave, m3_aw_slave, m3_ar_slave;
+    reg [5:0] m0_aw_slave, m0_ar_slave, m1_aw_slave, m1_ar_slave;
+    reg [5:0] m2_aw_slave, m2_ar_slave, m3_aw_slave, m3_ar_slave;
+    reg [5:0] m4_aw_slave, m4_ar_slave;
 
     always @(*) begin
         if      (m0_awaddr <= ROM_END)  m0_aw_slave = SLAVE_ROM;
@@ -99,7 +115,7 @@ module axi_lite_interconnect_v1_1 (
         else if (m0_awaddr >= EML_BASE  && m0_awaddr <= EML_END)  m0_aw_slave = SLAVE_EML;
         else if (m0_awaddr >= SNN_BASE  && m0_awaddr <= SNN_END)  m0_aw_slave = SLAVE_SNN;
         else if (m0_awaddr >= NVM_BASE  && m0_awaddr <= NVM_END)  m0_aw_slave = SLAVE_NVM;
-        else                                                       m0_aw_slave = 5'h0;
+        else                                                       m0_aw_slave = 6'h0;
     end
     always @(*) begin
         if      (m0_araddr <= ROM_END)  m0_ar_slave = SLAVE_ROM;
@@ -107,7 +123,7 @@ module axi_lite_interconnect_v1_1 (
         else if (m0_araddr >= EML_BASE  && m0_araddr <= EML_END)  m0_ar_slave = SLAVE_EML;
         else if (m0_araddr >= SNN_BASE  && m0_araddr <= SNN_END)  m0_ar_slave = SLAVE_SNN;
         else if (m0_araddr >= NVM_BASE  && m0_araddr <= NVM_END)  m0_ar_slave = SLAVE_NVM;
-        else                                                       m0_ar_slave = 5'h0;
+        else                                                       m0_ar_slave = 6'h0;
     end
     always @(*) begin
         if      (m1_awaddr <= ROM_END)  m1_aw_slave = SLAVE_ROM;
@@ -115,7 +131,7 @@ module axi_lite_interconnect_v1_1 (
         else if (m1_awaddr >= EML_BASE  && m1_awaddr <= EML_END)  m1_aw_slave = SLAVE_EML;
         else if (m1_awaddr >= SNN_BASE  && m1_awaddr <= SNN_END)  m1_aw_slave = SLAVE_SNN;
         else if (m1_awaddr >= NVM_BASE  && m1_awaddr <= NVM_END)  m1_aw_slave = SLAVE_NVM;
-        else                                                       m1_aw_slave = 5'h0;
+        else                                                       m1_aw_slave = 6'h0;
     end
     always @(*) begin
         if      (m1_araddr <= ROM_END)  m1_ar_slave = SLAVE_ROM;
@@ -123,7 +139,7 @@ module axi_lite_interconnect_v1_1 (
         else if (m1_araddr >= EML_BASE  && m1_araddr <= EML_END)  m1_ar_slave = SLAVE_EML;
         else if (m1_araddr >= SNN_BASE  && m1_araddr <= SNN_END)  m1_ar_slave = SLAVE_SNN;
         else if (m1_araddr >= NVM_BASE  && m1_araddr <= NVM_END)  m1_ar_slave = SLAVE_NVM;
-        else                                                       m1_ar_slave = 5'h0;
+        else                                                       m1_ar_slave = 6'h0;
     end
     always @(*) begin
         if      (m2_awaddr <= ROM_END)  m2_aw_slave = SLAVE_ROM;
@@ -131,7 +147,7 @@ module axi_lite_interconnect_v1_1 (
         else if (m2_awaddr >= EML_BASE  && m2_awaddr <= EML_END)  m2_aw_slave = SLAVE_EML;
         else if (m2_awaddr >= SNN_BASE  && m2_awaddr <= SNN_END)  m2_aw_slave = SLAVE_SNN;
         else if (m2_awaddr >= NVM_BASE  && m2_awaddr <= NVM_END)  m2_aw_slave = SLAVE_NVM;
-        else                                                       m2_aw_slave = 5'h0;
+        else                                                       m2_aw_slave = 6'h0;
     end
     always @(*) begin
         if      (m2_araddr <= ROM_END)  m2_ar_slave = SLAVE_ROM;
@@ -139,7 +155,7 @@ module axi_lite_interconnect_v1_1 (
         else if (m2_araddr >= EML_BASE  && m2_araddr <= EML_END)  m2_ar_slave = SLAVE_EML;
         else if (m2_araddr >= SNN_BASE  && m2_araddr <= SNN_END)  m2_ar_slave = SLAVE_SNN;
         else if (m2_araddr >= NVM_BASE  && m2_araddr <= NVM_END)  m2_ar_slave = SLAVE_NVM;
-        else                                                       m2_ar_slave = 5'h0;
+        else                                                       m2_ar_slave = 6'h0;
     end
     always @(*) begin
         if      (m3_awaddr <= ROM_END)  m3_aw_slave = SLAVE_ROM;
@@ -147,7 +163,8 @@ module axi_lite_interconnect_v1_1 (
         else if (m3_awaddr >= EML_BASE  && m3_awaddr <= EML_END)  m3_aw_slave = SLAVE_EML;
         else if (m3_awaddr >= SNN_BASE  && m3_awaddr <= SNN_END)  m3_aw_slave = SLAVE_SNN;
         else if (m3_awaddr >= NVM_BASE  && m3_awaddr <= NVM_END)  m3_aw_slave = SLAVE_NVM;
-        else                                                       m3_aw_slave = 5'h0;
+        else if (m3_awaddr >= DM_BASE   && m3_awaddr <= DM_END)   m3_aw_slave = SLAVE_DM;
+        else                                                       m3_aw_slave = 6'h0;
     end
     always @(*) begin
         if      (m3_araddr <= ROM_END)  m3_ar_slave = SLAVE_ROM;
@@ -155,30 +172,53 @@ module axi_lite_interconnect_v1_1 (
         else if (m3_araddr >= EML_BASE  && m3_araddr <= EML_END)  m3_ar_slave = SLAVE_EML;
         else if (m3_araddr >= SNN_BASE  && m3_araddr <= SNN_END)  m3_ar_slave = SLAVE_SNN;
         else if (m3_araddr >= NVM_BASE  && m3_araddr <= NVM_END)  m3_ar_slave = SLAVE_NVM;
-        else                                                       m3_ar_slave = 5'h0;
+        else if (m3_araddr >= DM_BASE   && m3_araddr <= DM_END)   m3_ar_slave = SLAVE_DM;
+        else                                                       m3_ar_slave = 6'h0;
+    end
+
+    // Master 4 (Debug Module SBA) address decoder
+    always @(*) begin
+        if      (m4_awaddr <= ROM_END)  m4_aw_slave = SLAVE_ROM;
+        else if (m4_awaddr >= SRAM_BASE && m4_awaddr <= SRAM_END) m4_aw_slave = SLAVE_SRAM;
+        else if (m4_awaddr >= EML_BASE  && m4_awaddr <= EML_END)  m4_aw_slave = SLAVE_EML;
+        else if (m4_awaddr >= SNN_BASE  && m4_awaddr <= SNN_END)  m4_aw_slave = SLAVE_SNN;
+        else if (m4_awaddr >= NVM_BASE  && m4_awaddr <= NVM_END)  m4_aw_slave = SLAVE_NVM;
+        else if (m4_awaddr >= DM_BASE   && m4_awaddr <= DM_END)   m4_aw_slave = SLAVE_DM;
+        else                                                       m4_aw_slave = 6'h0;
+    end
+    always @(*) begin
+        if      (m4_araddr <= ROM_END)  m4_ar_slave = SLAVE_ROM;
+        else if (m4_araddr >= SRAM_BASE && m4_araddr <= SRAM_END) m4_ar_slave = SLAVE_SRAM;
+        else if (m4_araddr >= EML_BASE  && m4_araddr <= EML_END)  m4_ar_slave = SLAVE_EML;
+        else if (m4_araddr >= SNN_BASE  && m4_araddr <= SNN_END)  m4_ar_slave = SLAVE_SNN;
+        else if (m4_araddr >= NVM_BASE  && m4_araddr <= NVM_END)  m4_ar_slave = SLAVE_NVM;
+        else if (m4_araddr >= DM_BASE   && m4_araddr <= DM_END)   m4_ar_slave = SLAVE_DM;
+        else                                                       m4_ar_slave = 6'h0;
     end
 
     // ==================== Arbiter ====================
-    wire [3:0] aw_req = {m3_awvalid, m2_awvalid, m1_awvalid, m0_awvalid};
-    wire [3:0] ar_req = {m3_arvalid, m2_arvalid, m1_arvalid, m0_arvalid};
-
-    reg [3:0] aw_select, ar_select;
-    wire [1:0] w_select = aw_select[1:0];
-    wire [1:0] r_select = ar_select[1:0];
+    wire [4:0] aw_req = {m4_awvalid, m3_awvalid, m2_awvalid, m1_awvalid, m0_awvalid};
+    wire [4:0] ar_req = {m4_arvalid, m3_arvalid, m2_arvalid, m1_arvalid, m0_arvalid};
+    // Fixed-priority arbiter (master 0 = highest)
+    reg [5:0] aw_select, ar_select;
+    wire [2:0] w_select = aw_select[2:0];
+    wire [2:0] r_select = ar_select[2:0];
 
     always @(*) begin
-        if (aw_req[0])      aw_select = 4'b0001;
-        else if (aw_req[1])  aw_select = 4'b0010;
-        else if (aw_req[2])  aw_select = 4'b0100;
-        else if (aw_req[3])  aw_select = 4'b1000;
-        else                 aw_select = 4'b0000;
+        if (aw_req[0])      aw_select = 6'b000001;
+        else if (aw_req[1])  aw_select = 6'b000010;
+        else if (aw_req[2])  aw_select = 6'b000100;
+        else if (aw_req[3])  aw_select = 6'b001000;
+        else if (aw_req[4])  aw_select = 6'b010000;
+        else                 aw_select = 5'b00000;
     end
     always @(*) begin
-        if (ar_req[0])      ar_select = 4'b0001;
-        else if (ar_req[1])  ar_select = 4'b0010;
-        else if (ar_req[2])  ar_select = 4'b0100;
-        else if (ar_req[3])  ar_select = 4'b1000;
-        else                 ar_select = 4'b0000;
+        if (ar_req[0])      ar_select = 6'b000001;
+        else if (ar_req[1])  ar_select = 6'b000010;
+        else if (ar_req[2])  ar_select = 6'b000100;
+        else if (ar_req[3])  ar_select = 6'b001000;
+        else if (ar_req[4])  ar_select = 6'b010000;
+        else                 ar_select = 5'b00000;
     end
 
     // ==================== Slave Output Mux ====================
@@ -187,36 +227,42 @@ module axi_lite_interconnect_v1_1 (
 
     // Slave 0 (ROM)
     always @(*) begin
-        if (aw_select == 4'b0001) begin
+        if (aw_select == 6'b000001) begin
             s0_awaddr  = m0_awaddr;  s0_awvalid = m0_awvalid;
-        end else if (aw_select == 4'b0010) begin
+        end else if (aw_select == 6'b000010) begin
             s0_awaddr  = m1_awaddr;  s0_awvalid = m1_awvalid;
-        end else if (aw_select == 4'b0100) begin
+        end else if (aw_select == 6'b000100) begin
             s0_awaddr  = m2_awaddr;  s0_awvalid = m2_awvalid;
-        end else if (aw_select == 4'b1000) begin
+        end else if (aw_select == 6'b001000) begin
             s0_awaddr  = m3_awaddr;  s0_awvalid = m3_awvalid;
+        end else if (aw_select == 6'b010000) begin
+            s0_awaddr  = m4_awaddr;  s0_awvalid = m4_awvalid;
         end else begin
             s0_awaddr  = 16'h0;  s0_awvalid = 1'b0;
         end
-        if (w_select == 2'b01) begin
+        if (w_select == 3'b001) begin
             s0_wdata  = m0_wdata;  s0_wstrb  = m0_wstrb;  s0_wvalid = m0_wvalid;
-        end else if (w_select == 2'b10) begin
+        end else if (w_select == 3'b010) begin
             s0_wdata  = m1_wdata;  s0_wstrb  = m1_wstrb;  s0_wvalid = m1_wvalid;
-        end else if (w_select == 2'b00 && m2_aw_slave != 5'h0) begin
+        end else if (w_select == 3'b011) begin
             s0_wdata  = m2_wdata;  s0_wstrb  = m2_wstrb;  s0_wvalid = m2_wvalid;
-        end else if (w_select == 2'b11 && m3_aw_slave != 5'h0) begin
+        end else if (w_select == 3'b100) begin
             s0_wdata  = m3_wdata;  s0_wstrb  = m3_wstrb;  s0_wvalid = m3_wvalid;
+        end else if (w_select == 3'b101) begin
+            s0_wdata  = m4_wdata;  s0_wstrb  = m4_wstrb;  s0_wvalid = m4_wvalid;
         end else begin
             s0_wdata  = 32'h0;  s0_wstrb  = 4'h0;  s0_wvalid = 1'b0;
         end
-        if (ar_select == 4'b0001) begin
+        if (ar_select == 6'b000001) begin
             s0_araddr  = m0_araddr;  s0_arvalid = m0_arvalid;
-        end else if (ar_select == 4'b0010) begin
+        end else if (ar_select == 6'b000010) begin
             s0_araddr  = m1_araddr;  s0_arvalid = m1_arvalid;
-        end else if (ar_select == 4'b0100) begin
+        end else if (ar_select == 6'b000100) begin
             s0_araddr  = m2_araddr;  s0_arvalid = m2_arvalid;
-        end else if (ar_select == 4'b1000) begin
+        end else if (ar_select == 6'b001000) begin
             s0_araddr  = m3_araddr;  s0_arvalid = m3_arvalid;
+        end else if (ar_select == 6'b010000) begin
+            s0_araddr  = m4_araddr;  s0_arvalid = m4_arvalid;
         end else begin
             s0_araddr  = 16'h0;  s0_arvalid = 1'b0;
         end
@@ -224,36 +270,42 @@ module axi_lite_interconnect_v1_1 (
 
     // Slave 1 (SRAM)
     always @(*) begin
-        if (aw_select == 4'b0001 && m0_aw_slave == SLAVE_SRAM) begin
+        if (aw_select == 6'b000001 && m0_aw_slave == SLAVE_SRAM) begin
             s1_awaddr  = m0_awaddr;  s1_awvalid = m0_awvalid;
-        end else if (aw_select == 4'b0010 && m1_aw_slave == SLAVE_SRAM) begin
+        end else if (aw_select == 6'b000010 && m1_aw_slave == SLAVE_SRAM) begin
             s1_awaddr  = m1_awaddr;  s1_awvalid = m1_awvalid;
-        end else if (aw_select == 4'b0100 && m2_aw_slave == SLAVE_SRAM) begin
+        end else if (aw_select == 6'b000100 && m2_aw_slave == SLAVE_SRAM) begin
             s1_awaddr  = m2_awaddr;  s1_awvalid = m2_awvalid;
-        end else if (aw_select == 4'b1000 && m3_aw_slave == SLAVE_SRAM) begin
+        end else if (aw_select == 6'b001000 && m3_aw_slave == SLAVE_SRAM) begin
             s1_awaddr  = m3_awaddr;  s1_awvalid = m3_awvalid;
+        end else if (aw_select == 6'b010000 && m4_aw_slave == SLAVE_SRAM) begin
+            s1_awaddr  = m4_awaddr;  s1_awvalid = m4_awvalid;
         end else begin
             s1_awaddr  = 16'h0;  s1_awvalid = 1'b0;
         end
-        if (w_select == 2'b01 && m0_aw_slave == SLAVE_SRAM) begin
+        if (w_select == 3'b001 && m0_aw_slave == SLAVE_SRAM) begin
             s1_wdata  = m0_wdata;  s1_wstrb  = m0_wstrb;  s1_wvalid = m0_wvalid;
-        end else if (w_select == 2'b10 && m1_aw_slave == SLAVE_SRAM) begin
+        end else if (w_select == 3'b010 && m1_aw_slave == SLAVE_SRAM) begin
             s1_wdata  = m1_wdata;  s1_wstrb  = m1_wstrb;  s1_wvalid = m1_wvalid;
-        end else if (m2_aw_slave == SLAVE_SRAM) begin
+        end else if (w_select == 3'b011 && m2_aw_slave == SLAVE_SRAM) begin
             s1_wdata  = m2_wdata;  s1_wstrb  = m2_wstrb;  s1_wvalid = m2_wvalid;
-        end else if (m3_aw_slave == SLAVE_SRAM) begin
+        end else if (w_select == 3'b100 && m3_aw_slave == SLAVE_SRAM) begin
             s1_wdata  = m3_wdata;  s1_wstrb  = m3_wstrb;  s1_wvalid = m3_wvalid;
+        end else if (w_select == 3'b101 && m4_aw_slave == SLAVE_SRAM) begin
+            s1_wdata  = m4_wdata;  s1_wstrb  = m4_wstrb;  s1_wvalid = m4_wvalid;
         end else begin
             s1_wdata  = 32'h0;  s1_wstrb  = 4'h0;  s1_wvalid = 1'b0;
         end
-        if (ar_select == 4'b0001 && m0_ar_slave == SLAVE_SRAM) begin
+        if (ar_select == 6'b000001 && m0_ar_slave == SLAVE_SRAM) begin
             s1_araddr  = m0_araddr;  s1_arvalid = m0_arvalid;
-        end else if (ar_select == 4'b0010 && m1_ar_slave == SLAVE_SRAM) begin
+        end else if (ar_select == 6'b000010 && m1_ar_slave == SLAVE_SRAM) begin
             s1_araddr  = m1_araddr;  s1_arvalid = m1_arvalid;
-        end else if (ar_select == 4'b0100 && m2_ar_slave == SLAVE_SRAM) begin
+        end else if (ar_select == 6'b000100 && m2_ar_slave == SLAVE_SRAM) begin
             s1_araddr  = m2_araddr;  s1_arvalid = m2_arvalid;
-        end else if (ar_select == 4'b1000 && m3_ar_slave == SLAVE_SRAM) begin
+        end else if (ar_select == 6'b001000 && m3_ar_slave == SLAVE_SRAM) begin
             s1_araddr  = m3_araddr;  s1_arvalid = m3_arvalid;
+        end else if (ar_select == 6'b010000 && m4_ar_slave == SLAVE_SRAM) begin
+            s1_araddr  = m4_araddr;  s1_arvalid = m4_arvalid;
         end else begin
             s1_araddr  = 16'h0;  s1_arvalid = 1'b0;
         end
@@ -261,36 +313,42 @@ module axi_lite_interconnect_v1_1 (
 
     // Slave 2 (EML)
     always @(*) begin
-        if (aw_select == 4'b0001 && m0_aw_slave == SLAVE_EML) begin
+        if (aw_select == 6'b000001 && m0_aw_slave == SLAVE_EML) begin
             s2_awaddr  = m0_awaddr;  s2_awvalid = m0_awvalid;
-        end else if (aw_select == 4'b0010 && m1_aw_slave == SLAVE_EML) begin
+        end else if (aw_select == 6'b000010 && m1_aw_slave == SLAVE_EML) begin
             s2_awaddr  = m1_awaddr;  s2_awvalid = m1_awvalid;
-        end else if (aw_select == 4'b0100 && m2_aw_slave == SLAVE_EML) begin
+        end else if (aw_select == 6'b000100 && m2_aw_slave == SLAVE_EML) begin
             s2_awaddr  = m2_awaddr;  s2_awvalid = m2_awvalid;
-        end else if (aw_select == 4'b1000 && m3_aw_slave == SLAVE_EML) begin
+        end else if (aw_select == 6'b001000 && m3_aw_slave == SLAVE_EML) begin
             s2_awaddr  = m3_awaddr;  s2_awvalid = m3_awvalid;
+        end else if (aw_select == 6'b010000 && m4_aw_slave == SLAVE_EML) begin
+            s2_awaddr  = m4_awaddr;  s2_awvalid = m4_awvalid;
         end else begin
             s2_awaddr  = 16'h0;  s2_awvalid = 1'b0;
         end
-        if (w_select == 2'b01 && m0_aw_slave == SLAVE_EML) begin
+        if (w_select == 3'b001 && m0_aw_slave == SLAVE_EML) begin
             s2_wdata  = m0_wdata;  s2_wstrb  = m0_wstrb;  s2_wvalid = m0_wvalid;
-        end else if (w_select == 2'b10 && m1_aw_slave == SLAVE_EML) begin
+        end else if (w_select == 3'b010 && m1_aw_slave == SLAVE_EML) begin
             s2_wdata  = m1_wdata;  s2_wstrb  = m1_wstrb;  s2_wvalid = m1_wvalid;
-        end else if (m2_aw_slave == SLAVE_EML) begin
+        end else if (w_select == 3'b011 && m2_aw_slave == SLAVE_EML) begin
             s2_wdata  = m2_wdata;  s2_wstrb  = m2_wstrb;  s2_wvalid = m2_wvalid;
-        end else if (m3_aw_slave == SLAVE_EML) begin
+        end else if (w_select == 3'b100 && m3_aw_slave == SLAVE_EML) begin
             s2_wdata  = m3_wdata;  s2_wstrb  = m3_wstrb;  s2_wvalid = m3_wvalid;
+        end else if (w_select == 3'b101 && m4_aw_slave == SLAVE_EML) begin
+            s2_wdata  = m4_wdata;  s2_wstrb  = m4_wstrb;  s2_wvalid = m4_wvalid;
         end else begin
             s2_wdata  = 32'h0;  s2_wstrb  = 4'h0;  s2_wvalid = 1'b0;
         end
-        if (ar_select == 4'b0001 && m0_ar_slave == SLAVE_EML) begin
+        if (ar_select == 6'b000001 && m0_ar_slave == SLAVE_EML) begin
             s2_araddr  = m0_araddr;  s2_arvalid = m0_arvalid;
-        end else if (ar_select == 4'b0010 && m1_ar_slave == SLAVE_EML) begin
+        end else if (ar_select == 6'b000010 && m1_ar_slave == SLAVE_EML) begin
             s2_araddr  = m1_araddr;  s2_arvalid = m1_arvalid;
-        end else if (ar_select == 4'b0100 && m2_ar_slave == SLAVE_EML) begin
+        end else if (ar_select == 6'b000100 && m2_ar_slave == SLAVE_EML) begin
             s2_araddr  = m2_araddr;  s2_arvalid = m2_arvalid;
-        end else if (ar_select == 4'b1000 && m3_ar_slave == SLAVE_EML) begin
+        end else if (ar_select == 6'b001000 && m3_ar_slave == SLAVE_EML) begin
             s2_araddr  = m3_araddr;  s2_arvalid = m3_arvalid;
+        end else if (ar_select == 6'b010000 && m4_ar_slave == SLAVE_EML) begin
+            s2_araddr  = m4_araddr;  s2_arvalid = m4_arvalid;
         end else begin
             s2_araddr  = 16'h0;  s2_arvalid = 1'b0;
         end
