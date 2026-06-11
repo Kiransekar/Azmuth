@@ -39,7 +39,8 @@ module fault_monitor (
 
     output wire        o_dbg_fault_latch,
     output wire [2:0]  o_dbg_state,
-    output wire [3:0]  o_dbg_latched_error_code
+    output wire [3:0]  o_dbg_latched_error_code,
+    output wire        o_watchdog_trip
 );
 
     // Internal registers
@@ -112,6 +113,7 @@ module fault_monitor (
             ecc_syndrome_reg <= 8'h0;
             ecc_correct_en <= 1'b0;
             ecc_corrected_data <= 64'h0;
+            watchdog_internal_trip <= 1'b0;
         end
         else begin
             // Update cycle counter
@@ -121,8 +123,15 @@ module fault_monitor (
             if (csr_wr_en) begin
                 case (csr_addr)
                     12'h7CC: fault_status_reg <= csr_wr_data;
-                    12'h7CD: watchdog_limit <= csr_wr_data;  // Watchdog timeout
-                    12'h7CE: ecc_scrub_count_reg <= csr_wr_data;  // ECC control
+                    12'h7CD: begin
+                        watchdog_limit <= csr_wr_data;
+                        watchdog_timeout_reg <= csr_wr_data;
+                        watchdog_enabled <= (csr_wr_data != 32'h0);
+                        watchdog_counter <= 32'h0;
+                        watchdog_internal_trip <= 1'b0;
+                    end
+                    12'h7CE: ecc_scrub_count_reg <= csr_wr_data;
+                    12'h7CF: ecc_corrected_count_reg <= csr_wr_data;
                     default: ;
                 endcase
             end
@@ -137,23 +146,25 @@ module fault_monitor (
                     if (watchdog_counter >= watchdog_limit) begin
                         watchdog_internal_trip <= 1'b1;
                     end
-                    else begin
-                        watchdog_internal_trip <= 1'b0;
-                    end
                 end
+            end
+            else begin
+                watchdog_counter <= 32'h0;
+                watchdog_internal_trip <= 1'b0;
             end
 
             // Detect faults and latch
             if (soft_error[0] || soft_error[1] || soft_error[2] || soft_error[3] ||
                 hard_error[0] || hard_error[1] || hard_error[2] || hard_error[3] ||
-                ecc_error || watchdog_trip || fault_detected) begin
+                ecc_error || watchdog_trip || watchdog_internal_trip || fault_detected) begin
 
                 // Determine error code based on fault type
-                if (watchdog_trip) begin
+                if (watchdog_trip || watchdog_internal_trip) begin
                     latched_error_code <= ERR_WATCHDOG;
                 end
                 else if (ecc_error && (soft_error[0] || hard_error[0])) begin
                     latched_error_code <= ERR_ECC_SINGLE;
+                    ecc_corrected_count_reg <= ecc_corrected_count_reg + 1'b1;
                 end
                 else if (ecc_error && (soft_error[1] || hard_error[1])) begin
                     latched_error_code <= ERR_ECC_DOUBLE;
@@ -182,7 +193,7 @@ module fault_monitor (
 
                 // Update status register
                 fault_status_reg[3:0] <= latched_error_code;
-                fault_status_reg[4] <= watchdog_trip;
+                fault_status_reg[4] <= watchdog_trip || watchdog_internal_trip;
                 fault_status_reg[5] <= ecc_error;
             end
 
@@ -269,6 +280,7 @@ module fault_monitor (
     assign o_dbg_fault_latch = fault_latch;
     assign o_dbg_state = current_state;
     assign o_dbg_latched_error_code = latched_error_code;
+    assign o_watchdog_trip = watchdog_internal_trip;
 
 endmodule
 

@@ -1,0 +1,19 @@
+PASS  ebreak
+PASS  ecall
+ERROR(compile) misalign1-cjalr-01
+ERROR(compile) misalign1-cjr-01
+PASS  misalign1-jalr-01
+PASS  misalign2-jalr-01
+PASS  misalign-beq-01
+PASS  misalign-bge-01
+PASS  misalign-bgeu-01
+PASS  misalign-blt-01
+PASS  misalign-bltu-01
+PASS  misalign-bne-01
+PASS  misalign-jal-01
+PASS  misalign-lh-01
+PASS  misalign-lhu-01
+PASS  misalign-lw-01
+PASS  misalign-sh-01
+PASS  misalign-sw-01
+arch-test rv32i_m/privilege : PASS=16 FAIL=0 ERROR=2

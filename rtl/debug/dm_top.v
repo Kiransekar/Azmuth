@@ -40,7 +40,7 @@ module dm_top (
     output wire        trigger_hit,
     // Debug ROM interface
     output wire [11:0] debug_rom_addr,
-    input  wire [31:0] debug_rom_instr
+    output wire [31:0] debug_rom_instr
 );
 
     // DM register addresses (per RISC-V Debug Spec 0.13.2)

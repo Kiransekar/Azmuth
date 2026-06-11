@@ -184,6 +184,7 @@ module security_tb;
         eml_timing_var_en = 1'b0;
 
         for (i = 0; i < 5; i = i + 1) begin
+            while (!eml_ready_out) #10;
             eml_rs1 = test_inputs[i];
             eml_cfg = 32'h00000001;
             eml_valid_in = 1'b1;

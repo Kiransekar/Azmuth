@@ -29,23 +29,35 @@ mkdir -p "$OUT"
 command -v spike >/dev/null || { echo "spike not found (source toolchain/env.sh)"; exit 1; }
 [ -d "$SRC" ] || { echo "suite not found: $SRC"; exit 1; }
 
+# Determine GCC -march and Spike -isa dynamically based on the suite name
+GCC_MARCH="rv32im_zicsr"
+SPIKE_ISA="rv32im_zicsr"
+IVERILOG_FLAGS=""
+if [[ "$SUITE_REL" == *"/C"* ]] || [[ "$SUITE_REL" == *"_c/"* ]] || [[ "$SUITE_REL" == *"rv32i_m/C"* ]]; then
+  GCC_MARCH="rv32imc_zicsr"
+  SPIKE_ISA="rv32imc_zicsr"
+  IVERILOG_FLAGS="-DSUPPORT_C=1"
+fi
+
 # Build the DUT simulator once
 SIM="$WORK/azmuth_sim"
-iverilog -g2001 -o "$SIM" tb/riscof/azmuth_riscof_tb.v rtl/core/riscv_core.v 2>/dev/null \
+iverilog -g2001 $IVERILOG_FLAGS -o "$SIM" tb/riscof/azmuth_riscof_tb.v rtl/core/riscv_core.v 2>/dev/null \
   || { echo "sim build failed"; exit 1; }
 
 pass=0; fail=0; err=0; results="$OUT/results.txt"; : > "$results"
 for t in "$SRC"/*.S; do
   name=$(basename "$t" .S); w="$WORK/$name"; mkdir -p "$w"
-  # -fno-pic + -mcmodel=medany: absolute (PC-relative) addressing, so the
-  # jalr/*-align tests compile (no R_RISCV_GOT_HI20). --build-id=none drops the
-  # .note.gnu.build-id that GCC otherwise places at 0x80000000, which would push
-  # rvtest_entry_point to 0x80000040 — the DUT resets at 0x80000000, so the entry
-  # must land there. (Earlier this was forced to PIC because the core mishandled
-  # SB/SH lanes and sub-word loads; fixed in BUG-035/036, so -fno-pic now passes.)
-  if ! $GCC -march=rv32i_zicsr -mabi=ilp32 -static -mcmodel=medany -fno-pic -fvisibility=hidden \
+  # Extract extra defines needed for compliance/privilege tests
+  EXTRA_DEFS=""
+  for var in rvtest_mtrap_routine rvtest_strap_routine HARDWARE_UPDATE_A_D SOFTWARE_UPDATE_A_D; do
+    if grep -q "$var" "$t"; then
+      EXTRA_DEFS="$EXTRA_DEFS -D$var=True"
+    fi
+  done
+
+  if ! $GCC -march="$GCC_MARCH" -mabi=ilp32 -static -mcmodel=medany -fno-pic -fvisibility=hidden \
         -nostdlib -nostartfiles -Wl,--build-id=none -T "$PENV/link.ld" -I "$PENV" -I "$AENV" \
-        -DXLEN=32 -DTEST_CASE_1=True "$t" -o "$w/my.elf" 2>"$w/cc.log"; then
+        -DXLEN=32 -DTEST_CASE_1=True $EXTRA_DEFS "$t" -o "$w/my.elf" 2>"$w/cc.log"; then
     echo "ERROR(compile) $name" | tee -a "$results"; err=$((err+1)); continue
   fi
   $OBJCOPY -O binary "$w/my.elf" "$w/my.bin"
@@ -53,8 +65,9 @@ for t in "$SRC"/*.S; do
   beg=$($OBJDUMP -t "$w/my.elf" | awk '/ begin_signature$/{print $1; exit}')
   end=$($OBJDUMP -t "$w/my.elf" | awk '/ end_signature$/{print $1; exit}')
   toh=$($OBJDUMP -t "$w/my.elf" | awk '/ tohost$/{print $1; exit}')
-  ent=0x$($OBJDUMP -t "$w/my.elf" | awk '/ rvtest_entrypoint$/{print $1; exit}')
-  timeout 30 spike --isa=rv32i_zicsr --pc="$ent" +signature="$w/ref.sig" \
+  ent_sym=$($OBJDUMP -t "$w/my.elf" | awk '/ rvtest_entry_point$/ || / rvtest_entrypoint$/{print $1; exit}')
+  ent=0x$ent_sym
+  timeout 30 spike --isa="$SPIKE_ISA" --pc=0x80000000 +signature="$w/ref.sig" \
         +signature-granularity=4 "$w/my.elf" >/dev/null 2>&1
   timeout 300 vvp "$SIM" +hex="$w/my.hex" +sig="$w/dut.sig" \
         +begin="$beg" +end="$end" +tohost="$toh" >/dev/null 2>&1

@@ -1,0 +1,111 @@
+2c2,9
+< 80000000
+---
+> deadbeef
+> 00000000
+> 800007ff
+> deadbeef
+> 000007ff
+> 00000000
+> 00000000
+> 00000000
+4,10d10
+< 7fffffff
+< 00000001
+< fffffff7
+< 00000002
+< 00000004
+< 00000008
+< 00000010
+14c14
+< 00000100
+---
+> deadbeef
+17c17
+< 00000800
+---
+> deadbeef
+19c19
+< 00002000
+---
+> deadbeef
+27c27
+< 00200000
+---
+> deadbeef
+34c34
+< 10000000
+---
+> deadbeef
+37,40c37,40
+< fffffffe
+< fffffffd
+< fffffffb
+< ffffffef
+---
+> 000007ff
+> 000007ff
+> deadbeef
+> 000007ff
+42,46c42,46
+< ffffffbf
+< f7ffffff
+< efffffff
+< dfffffff
+< bfffffff
+---
+> deadbeef
+> f80007ff
+> f00007ff
+> 000007ff
+> c00007ff
+49,52c49,52
+< 00000800
+< 00000001
+< fbffffff
+< 00000005
+---
+> ffffffbf
+> 00000000
+> fc0007ff
+> 00000000
+55c55
+< fffffdff
+---
+> deadbeef
+58,72c58
+< ffffefff
+< ffffdfff
+< ffffbfff
+< ffff7fff
+< fffeffff
+< fffdffff
+< fffbffff
+< fff7ffff
+< ffefffff
+< ffdfffff
+< ffbfffff
+< ff7fffff
+< feffffff
+< fdffffff
+< 6f5ca309
+---
+> fffff7ff
+73a60,68
+> ffffc7ff
+> ffff87ff
+> ffff07ff
+> fffe07ff
+> ffffe7ff
+> fff807ff
+> fff007ff
+> ffe007ff
+> ffc007ff
+76a72,74
+> 6f5ca309
+> deadbeef
+> ff0007ff
+77a76
+> ff8007ff
+78a78
+> fe0007ff

@@ -43,7 +43,16 @@ RTL_FILES = $(RTL_DIR)/$(TOP_MODULE).v \
           $(RTL_DIR)/power/body_bias_ctrl.v \
           $(RTL_DIR)/security/fault_monitor.v \
           $(RTL_DIR)/soc/axi_lite_interconnect_v1_1.v \
-           $(RTL_DIR)/soc/cdc_sync.v
+          $(RTL_DIR)/soc/cdc_sync.v \
+          $(RTL_DIR)/debug/debug_rom.v \
+          $(RTL_DIR)/debug/dm_abstract_cmd.v \
+          $(RTL_DIR)/debug/dm_progbuf.v \
+          $(RTL_DIR)/debug/dm_regfile.v \
+          $(RTL_DIR)/debug/dm_top.v \
+          $(RTL_DIR)/debug/dm_trigger.v \
+          $(RTL_DIR)/debug/dtm/dtm_top.v \
+          $(RTL_DIR)/debug/dtm/jtag_dr.v \
+          $(RTL_DIR)/debug/dtm/jtag_tap.v
 
 # Default target
 .PHONY: all
@@ -141,9 +150,10 @@ sim_eml:
 .PHONY: sim_soc
 sim_soc:
 	@echo "Running SOC simulations..."
+	@mkdir -p reports/latest/sim
 	@if [ -f "$(TB_DIR)/soc_tb.v" ]; then \
-		iverilog -o $(TB_DIR)/soc_tb $(TB_DIR)/soc_tb.v $(RTL_FILES); \
-		vvp $(TB_DIR)/soc_tb; \
+		$(IVERILOG) -o $(TB_DIR)/soc_tb $(TB_DIR)/soc_tb.v $(RTL_FILES); \
+		$(VVP) $(TB_DIR)/soc_tb > reports/latest/sim/soc_tb.log; \
 	else \
 		echo "SOC testbench not found. Create $(TB_DIR)/soc_tb.v first."; \
 	fi
@@ -152,23 +162,82 @@ sim_soc:
 .PHONY: sim_top
 sim_top:
 	@echo "Running top-level simulations..."
-	@if [ -f "$(TB_DIR)/top_tb.v" ]; then \
-		iverilog -o $(TB_DIR)/top_tb $(TB_DIR)/top_tb.v $(RTL_FILES); \
-		vvp $(TB_DIR)/top_tb; \
+	@mkdir -p reports/latest/sim
+	@if [ -f "$(TB_DIR)/xcew_top_v1_1_tb.v" ]; then \
+		$(IVERILOG) -o $(TB_DIR)/xcew_top_v1_1_tb $(TB_DIR)/xcew_top_v1_1_tb.v $(RTL_FILES); \
+		$(VVP) $(TB_DIR)/xcew_top_v1_1_tb > reports/latest/sim/top_tb.log; \
 	else \
-		echo "Top-level testbench not found. Create $(TB_DIR)/top_tb.v first."; \
+		echo "Top-level testbench not found. Create $(TB_DIR)/xcew_top_v1_1_tb.v first."; \
 	fi
 
 # Run SNN Tile 256 simulation
 .PHONY: sim_snn_tile_256
 sim_snn_tile_256:
 	@echo "Running SNN Tile 256 simulation..."
+	@mkdir -p reports/latest/sim
 	@if [ -f "$(TB_DIR)/snn_tile_256_tb.v" ]; then \
-		iverilog -g2001 -o $(TB_DIR)/snn_tile_256_tb $(RTL_DIR)/snn/lif_ttfs_neuron_v1_1.v $(RTL_DIR)/snn/snn_tile_256.v $(TB_DIR)/snn_tile_256_tb.v; \
-		vvp $(TB_DIR)/snn_tile_256_tb; \
+		$(IVERILOG) -g2001 -o $(TB_DIR)/snn_tile_256_tb $(RTL_DIR)/snn/lif_ttfs_neuron_v1_1.v $(RTL_DIR)/snn/snn_tile_256.v $(TB_DIR)/snn_tile_256_tb.v; \
+		$(VVP) $(TB_DIR)/snn_tile_256_tb > reports/latest/sim/snn_tile_256_tb.log; \
 	else \
 		echo "SNN Tile 256 testbench not found."; \
 	fi
+
+# Run Security simulation
+.PHONY: sim_security
+sim_security:
+	@echo "Running Security simulations..."
+	@mkdir -p reports/latest/sim
+	@$(IVERILOG) -g2001 -o $(TB_DIR)/security_tb $(TB_DIR)/security_tb.v $(RTL_DIR)/eml/eml_constant_time.v $(RTL_DIR)/core/policy_determinism.v $(RTL_DIR)/security/fault_monitor.v
+	@$(VVP) $(TB_DIR)/security_tb > reports/latest/sim/security_tb.log
+
+# Run NVM controller simulation
+.PHONY: sim_nvm
+sim_nvm:
+	@echo "Running NVM simulations..."
+	@mkdir -p reports/latest/sim
+	@$(IVERILOG) -g2001 -o $(TB_DIR)/nvm_tb $(TB_DIR)/nvm_tb.v $(RTL_DIR)/nvm/nvm_ctrl.v
+	@$(VVP) $(TB_DIR)/nvm_tb > reports/latest/sim/nvm_tb.log
+
+# Run Power Orchestrator simulation
+.PHONY: sim_power
+sim_power:
+	@echo "Running Power Orchestrator simulations..."
+	@mkdir -p reports/latest/sim
+	@$(IVERILOG) -g2001 -o $(TB_DIR)/power_orch_tb $(TB_DIR)/power_orch_tb.v $(RTL_DIR)/power/orchestrator.v
+	@$(VVP) $(TB_DIR)/power_orch_tb > reports/latest/sim/power_orch_tb.log
+
+# Run AXI-Lite Interconnect simulation
+.PHONY: sim_interconnect
+sim_interconnect:
+	@echo "Running Interconnect simulations..."
+	@mkdir -p reports/latest/sim
+	@$(IVERILOG) -g2001 -o $(TB_DIR)/axi_lite_interconnect_v1_1_tb $(TB_DIR)/axi_lite_interconnect_v1_1_tb.v $(RTL_DIR)/soc/axi_lite_interconnect_v1_1.v
+	@$(VVP) $(TB_DIR)/axi_lite_interconnect_v1_1_tb > reports/latest/sim/axi_lite_interconnect_tb.log
+
+# Run SNN TTFS simulation
+.PHONY: sim_snn_ttfs
+sim_snn_ttfs:
+	@echo "Running SNN TTFS simulations..."
+	@mkdir -p reports/latest/sim
+	@$(IVERILOG) -g2001 -o $(TB_DIR)/snn_ttfs_tb $(TB_DIR)/snn_ttfs_tb.v $(RTL_DIR)/snn/lif_ttfs_neuron_v1_1.v $(RTL_DIR)/snn/stdp_engine_v1_1.v
+	@$(VVP) $(TB_DIR)/snn_ttfs_tb > reports/latest/sim/snn_ttfs_tb.log
+
+# Run SNN v1.1 simulation
+.PHONY: sim_snn_v1_1
+sim_snn_v1_1:
+	@echo "Running SNN v1.1 simulations..."
+	@mkdir -p reports/latest/sim
+	@$(IVERILOG) -g2001 -o $(TB_DIR)/snn_v1_1_tb $(TB_DIR)/snn_v1_1_tb.v $(RTL_DIR)/snn/lif_ttfs_neuron_v1_1.v $(RTL_DIR)/snn/stdp_engine_v1_1.v
+	@$(VVP) $(TB_DIR)/snn_v1_1_tb > reports/latest/sim/snn_v1_1_tb.log
+
+# Run EML DAG cache simulation
+.PHONY: sim_eml_dag
+sim_eml_dag:
+	@echo "Running EML DAG simulations..."
+	@mkdir -p reports/latest/sim
+	@$(IVERILOG) -g2001 -o $(TB_DIR)/eml_dag_tb $(TB_DIR)/eml_dag_tb.v $(RTL_DIR)/eml/eml_dag_cache.v
+	@$(VVP) $(TB_DIR)/eml_dag_tb > reports/latest/sim/eml_dag_tb.log
+
 
 # Run co-simulation (self-contained with iverilog, no toolchain required)
 .PHONY: sim_cosim

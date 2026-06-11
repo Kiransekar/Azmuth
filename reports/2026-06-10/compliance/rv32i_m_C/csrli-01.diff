@@ -1,0 +1,58 @@
+7c7,8
+< 000fffff
+---
+> 00100000
+> 00000000
+10d10
+< 00000004
+37d36
+< 003fffff
+39,41c38,41
+< 00ffffff
+< 00003fff
+< 000fffff
+---
+> 00000000
+> 00000007
+> 00000000
+> 00000000
+49,54c49,54
+< 7ffff7ff
+< 01ffffbf
+< 03fffeff
+< 1fffefff
+< 01fffdff
+< 01fffbff
+---
+> 7ffffbff
+> 01ffffcf
+> 03ffff1f
+> 1ffff0ff
+> 01fffe0f
+> 01fffc0f
+56,57c56,57
+< 00007ff7
+< 0ffdffff
+---
+> 00007ff8
+> 0ffe007f
+59,64c59,64
+< 00001fbf
+< 000001f7
+< 0007bfff
+< 00efffff
+< 00dfffff
+< 0002ffff
+---
+> 00001fc0
+> 000001f8
+> 0007c000
+> 00f00007
+> 00e00007
+> 00030000
+85,86c85,86
+< 07fbffff
+< 1fdfffff
+---
+> 07fc003f
+> 1fe000ff

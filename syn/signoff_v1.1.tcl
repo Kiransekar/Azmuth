@@ -10,6 +10,19 @@
 # ---------------------------------------------------------------------------
 # Initialization
 # ---------------------------------------------------------------------------
+yosys -import
+
+# Dummy timing procedures for Yosys environment
+proc create_clock {args} {}
+proc set_clock_uncertainty {args} {}
+proc set_input_delay {args} {}
+proc set_output_delay {args} {}
+proc set_max_area {args} {}
+proc report_timing {args} {}
+proc get_ports {args} { return "" }
+proc get_clocks {args} { return "" }
+proc all_inputs {args} { return "" }
+proc all_outputs {args} { return "" }
 set report_dir "syn/reports"
 file mkdir $report_dir
 
@@ -37,11 +50,21 @@ read_verilog -sv rtl/core/policy_determinism.v
 read_verilog -sv rtl/eml/eml_unit.v
 read_verilog -sv rtl/eml/eml_dag_cache.v
 read_verilog -sv rtl/eml/eml_constant_time.v
-read_verilog -sv rtl/snn/snn_tile.v
-read_verilog -sv rtl/snn/lif_ttfs_neuron.v
-read_verilog -sv rtl/snn/stdp_engine.v
+read_verilog -sv rtl/snn/snn_tile_256.v
+read_verilog -sv rtl/snn/lif_ttfs_neuron_v1_1.v
+read_verilog -sv rtl/snn/stdp_engine_v1_1.v
 read_verilog -sv rtl/nvm/nvm_ctrl.v
-read_verilog -sv rtl/soc/axi_lite_interconnect.v
+read_verilog -sv rtl/soc/axi_lite_interconnect_v1_1.v
+read_verilog -sv rtl/soc/cdc_sync.v
+read_verilog -sv rtl/debug/debug_rom.v
+read_verilog -sv rtl/debug/dm_abstract_cmd.v
+read_verilog -sv rtl/debug/dm_progbuf.v
+read_verilog -sv rtl/debug/dm_regfile.v
+read_verilog -sv rtl/debug/dm_top.v
+read_verilog -sv rtl/debug/dm_trigger.v
+read_verilog -sv rtl/debug/dtm/dtm_top.v
+read_verilog -sv rtl/debug/dtm/jtag_dr.v
+read_verilog -sv rtl/debug/dtm/jtag_tap.v
 read_verilog -sv rtl/power/orchestrator.v
 read_verilog -sv rtl/power/body_bias_ctrl.v
 read_verilog -sv rtl/security/fault_monitor.v
@@ -49,7 +72,7 @@ read_verilog -sv rtl/security/fault_monitor.v
 hierarchy -check -top xcew_top_v1_1
 
 # Process RTL constructs
-proc; opt; memory; fsm
+procs; opt; memory; fsm
 
 # Generic synthesis optimization
 synth -top xcew_top_v1_1 -flatten

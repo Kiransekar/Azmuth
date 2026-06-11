@@ -396,6 +396,8 @@ module xcew_top_v1_1 (
     wire [31:0] nvm_rd_data_int;
     wire        nvm_busy_int;
     wire        nvm_ecc_err_int;
+    wire        nvm_ecc_double_err;
+    wire        nvm_ecc_single_err;
 
     // =========================================================================
     // CSR address decode (named wires for clarity)
@@ -425,10 +427,7 @@ module xcew_top_v1_1 (
         csr_is_bias_ctrl   ? csr_bias_ctrl    :
         csr_is_sec_ctrl    ? csr_sec_ctrl     :
         csr_is_pol_sec     ? csr_pol_sec      :
-        csr_is_fault_sts   ? csr_fault_status :
-        csr_is_watchdog    ? csr_watchdog_timeout :
-        csr_is_ecc_scrub   ? csr_ecc_scrub_count :
-        csr_is_ecc_corr    ? csr_ecc_corrected_count :
+        (csr_is_fault_sts || csr_is_watchdog || csr_is_ecc_scrub || csr_is_ecc_corr) ? fault_csr_rd_if :
         32'h0;
 
     // =========================================================================
@@ -437,7 +436,6 @@ module xcew_top_v1_1 (
     always @(posedge clk_core or posedge rst) begin
         if (rst) begin
             csr_xcew_cfg      <= 32'h0;
-            csr_xcew_status   <= 32'h0;
             csr_snn_ctrl_ext  <= 32'h0;
             csr_eml_dag_ctl   <= 32'h0;
             csr_pwr_ctrl_reg  <= 32'h0;
@@ -872,18 +870,59 @@ module xcew_top_v1_1 (
         .i_rd_en(nvm_rd_en_int),
         .o_rd_data(nvm_rd_data_int),
         .o_busy(nvm_busy_int),
-        .o_ecc_err(nvm_ecc_err_int)
+        .o_ecc_err(nvm_ecc_err_int),
+        .o_ecc_double_err(nvm_ecc_double_err),
+        .o_ecc_single_err(nvm_ecc_single_err)
     );
 
+    assign nvm_addr_int    = s4_arvalid ? s4_araddr : s4_awaddr;
+    assign nvm_wr_en_int   = s4_awvalid && s4_wvalid && (s4_rd_state == 2'b00);
+    assign nvm_wr_data_int = s4_wdata;
+    assign nvm_rd_en_int   = s4_arvalid && (s4_rd_state == 2'b00);
+
+    reg [1:0] s4_rd_state;
+    reg       s4_rvalid_reg;
+    reg [31:0] s4_rdata_reg;
+
+    always @(posedge clk_core or posedge rst) begin
+        if (rst) begin
+            s4_rd_state   <= 2'b00;
+            s4_rvalid_reg <= 1'b0;
+            s4_rdata_reg  <= 32'h0;
+        end else begin
+            case (s4_rd_state)
+                2'b00: begin
+                    if (s4_arvalid) begin
+                        s4_rd_state <= 2'b01;
+                    end
+                end
+                2'b01: begin
+                    s4_rd_state <= 2'b10;
+                end
+                2'b10: begin
+                    s4_rvalid_reg <= 1'b1;
+                    s4_rdata_reg  <= nvm_rd_data_int;
+                    s4_rd_state   <= 2'b11;
+                end
+                2'b11: begin
+                    if (s4_rready) begin
+                        s4_rvalid_reg <= 1'b0;
+                        s4_rd_state   <= 2'b00;
+                    end
+                end
+            endcase
+        end
+    end
+
     // NVM CSR slave
-    assign s4_rdata  = 32'h0;
-    assign s4_rvalid = s4_arvalid;
-    assign s4_rresp  = 2'b00;
-    assign s4_bvalid = (s4_awvalid && s4_wvalid) ? 1'b1 : 1'b0;
-    assign s4_bresp  = 2'b00;
-    assign s4_awready = 1'b1;
-    assign s4_wready  = 1'b1;
-    assign s4_arready = 1'b1;
+    assign s4_rdata   = s4_rdata_reg;
+    assign s4_rvalid  = s4_rvalid_reg;
+    assign s4_rresp   = 2'b00;
+    assign s4_bvalid  = (s4_awvalid && s4_wvalid) ? 1'b1 : 1'b0;
+    assign s4_bresp   = 2'b00;
+    assign s4_awready = !nvm_busy_int;
+    assign s4_wready  = !nvm_busy_int;
+    assign s4_arready = (s4_rd_state == 2'b00);
 
     // =========================================================================
     // Power Orchestrator
@@ -932,9 +971,13 @@ module xcew_top_v1_1 (
     // =========================================================================
     // Fault Monitor
     // =========================================================================
-    assign soft_error_int = 4'h0;
-    assign hard_error_int = 4'h0;
-    assign ecc_error_int  = nvm_ecc_err_int;
+    assign soft_error_int[0] = ecc_error_int ? nvm_ecc_single_err : eml_exc_int;
+    assign soft_error_int[3:1] = 3'b000;
+    assign hard_error_int[0] = 1'b0;
+    assign hard_error_int[1] = nvm_ecc_double_err;
+    assign hard_error_int[2] = nvm_ecc_double_err;
+    assign hard_error_int[3] = 1'b0;
+    assign ecc_error_int  = nvm_ecc_single_err | nvm_ecc_double_err;
     assign fault_clr_int  = 1'b0;
     assign irq_enable_int = 1'b1;
 
@@ -949,7 +992,7 @@ module xcew_top_v1_1 (
         .soft_error(soft_error_int),
         .hard_error(hard_error_int),
         .ecc_error(ecc_error_int),
-        .watchdog_trip(watchdog_trip_int),
+        .watchdog_trip(1'b0),
         .fault_detected(fault_detected_int),
         .fault_clr(fault_clr_int),
         .irq_enable(irq_enable_int),
@@ -957,12 +1000,13 @@ module xcew_top_v1_1 (
         .pipeline_halt(pipeline_halt_int),
         .error_code(error_code_int),
         .csr_addr(core_csr_addr),
-        .csr_wr_en(core_csr_wr_en),
+        .csr_wr_en(core_csr_wr_en && v1_1_en),
         .csr_wr_data(core_csr_wr_data),
         .csr_rd_data(fault_csr_rd_if),
         .o_dbg_fault_latch(),
         .o_dbg_state(),
-        .o_dbg_latched_error_code()
+        .o_dbg_latched_error_code(),
+        .o_watchdog_trip(watchdog_trip_int)
     );
 
     // =========================================================================
@@ -1112,4 +1156,32 @@ module xcew_top_v1_1 (
         .debug_rom_instr(debug_rom_instr_int)
     );
 
+    // =========================================================================
+    // Coprocessor Handshake Wiring
+    // =========================================================================
+    assign core_xcew_ready = eml_ready_int && snn_ready_sync && !nvm_busy_int;
+
+    // Detect the opcode of the instruction
+    wire [6:0] xcew_opcode = core_xcew_req[6:0];
+    
+    // Wire the done and resp signals back to the core
+    assign core_xcew_done = 
+        (xcew_opcode == 7'b0001011) ? (const_time_en_int ? eml_ct_valid_out : eml_valid_out_int) :
+        (xcew_opcode == 7'b1011011) ? snn_result_valid_dst :
+        (xcew_opcode == 7'b0101011) ? policy_done_int :
+        (xcew_opcode == 7'b1111011) ? core_xcew_valid : // MISC (single cycle)
+        1'b0;
+
+    assign core_xcew_resp =
+        (xcew_opcode == 7'b0001011) ? (const_time_en_int ? eml_ct_rd : eml_rd_raw) :
+        (xcew_opcode == 7'b1011011) ? {8'h0, snn_conf_sync, snn_class_sync} :
+        (xcew_opcode == 7'b0101011) ? policy_result_int :
+        32'h0;
+
+    // Drive Policy Determinism inputs
+    assign policy_exec_start_int = core_xcew_valid && (xcew_opcode == 7'b0101011);
+    assign policy_data_int       = core_rs1_data;
+    assign policy_valid_int      = core_xcew_valid && (xcew_opcode == 7'b0101011);
+
 endmodule
+

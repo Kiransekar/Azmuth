@@ -14,14 +14,20 @@ module nvm_ctrl (
 
     output reg [31:0]  o_rd_data,
     output reg         o_busy,
-    output reg         o_ecc_err
+    output reg         o_ecc_err,
+    output reg         o_ecc_double_err,
+    output reg         o_ecc_single_err
 );
 
     // Memory parameters
     localparam ADDR_WIDTH = 16;  // 64KB address space (2^16)
     localparam DATA_WIDTH = 32;
+`ifdef SYNTHESIS
+    localparam MEM_SIZE = 16; // 16 words for synthesis tractability (Lever L1)
+`else
     localparam MEM_SIZE = 65536; // 64K words
-    localparam META_SIZE = 65536; // Metadata for ECC
+`endif
+    localparam META_SIZE = MEM_SIZE; // Metadata for ECC
 
     // Wear leveling parameters
     localparam WL_PTR_WIDTH = 10;  // 1024 wear leveling blocks
@@ -135,11 +141,20 @@ module nvm_ctrl (
     // Update effective address with wear leveling
     assign effective_addr = i_addr ^ ({6'b0, wear_ptr} << 6);
 
+    wire [15:0] index_addr;
+`ifdef SYNTHESIS
+    assign index_addr = effective_addr[3:0];
+`else
+    assign index_addr = effective_addr;
+`endif
+
     always @(posedge i_clk_nvm or posedge i_rst) begin
         if (i_rst) begin
             o_rd_data <= 0;
             o_busy <= 1'b0;
             o_ecc_err <= 1'b0;
+            o_ecc_double_err <= 1'b0;
+            o_ecc_single_err <= 1'b0;
             wear_ptr <= 0;
             read_valid <= 1'b0;
 
@@ -152,8 +167,8 @@ module nvm_ctrl (
         end else begin
             // Stage 1: Capture read data from memory
             if (i_rd_en && !o_busy) begin
-                read_data <= mem_array[effective_addr];
-                read_ecc <= ecc_meta[effective_addr];
+                read_data <= mem_array[index_addr];
+                read_ecc <= ecc_meta[index_addr];
                 read_valid <= 1'b1;
             end
 
@@ -162,8 +177,10 @@ module nvm_ctrl (
                 // calculated_ecc is combinational from registered read_data
                 // syndrome, single_bit_err, double_bit_err are combinational
 
-                // Set error flag if double-bit error detected
+                // Set error flags
                 o_ecc_err <= double_bit_err;
+                o_ecc_double_err <= double_bit_err;
+                o_ecc_single_err <= single_bit_err;
 
                 // Correct single-bit errors using combinational signals
                 corrected_data = correct_data(read_data, read_ecc, calculated_ecc, single_bit_err);
@@ -177,8 +194,8 @@ module nvm_ctrl (
             // Handle write operations - direct write with ECC
             if (i_wr_en) begin
                 // Write data and ECC directly to memory arrays
-                mem_array[effective_addr] <= i_wr_data;
-                ecc_meta[effective_addr] <= calc_ecc(i_wr_data);
+                mem_array[index_addr] <= i_wr_data;
+                ecc_meta[index_addr] <= calc_ecc(i_wr_data);
 
                 // Update wear leveling pointer
                 wear_ptr <= wear_ptr + 1'b1;

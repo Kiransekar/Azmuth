@@ -125,11 +125,17 @@ module riscv_core #(
     // IF stage signals
     reg [31:0] if_instr;
     reg [31:0] if_pc;
+`ifdef SUPPORT_C
+    reg        if_is_compressed;
+`endif
 
     // ID/EX stage signals
     reg [31:0] id_ex_instr;
     reg [31:0] id_ex_pc;
     reg        id_ex_valid;
+`ifdef SUPPORT_C
+    reg        id_ex_is_compressed;
+`endif
 
     // Instruction fields
     reg [6:0]  id_opcode;
@@ -142,7 +148,7 @@ module riscv_core #(
 
     // ALU signals
     reg [31:0] alu_op1, alu_op2;
-    reg [3:0]  alu_control;
+    reg [4:0]  alu_control;
     integer rf_init_idx;  // For register file initialization loop
 
     // Register file
@@ -187,38 +193,78 @@ module riscv_core #(
         (id_ex_instr[6:0] == OPCODE_XCEW_MISC);
 
     // ALU Control values
-    localparam ALU_ADD  = 4'b0000;
-    localparam ALU_SUB  = 4'b0001;
-    localparam ALU_AND  = 4'b0010;
-    localparam ALU_OR   = 4'b0011;
-    localparam ALU_XOR  = 4'b0100;
-    localparam ALU_SLT  = 4'b0101;
-    localparam ALU_SHL  = 4'b0110;
-    localparam ALU_SHR  = 4'b0111;
-    localparam ALU_SLTU = 4'b1000;   // unsigned set-less-than (BUG-031)
-    localparam ALU_SRA  = 4'b1001;   // arithmetic shift right (BUG-032)
-    localparam ALU_PASS = 4'b1111;
+    localparam ALU_ADD    = 5'b00000;
+    localparam ALU_SUB    = 5'b00001;
+    localparam ALU_AND    = 5'b00010;
+    localparam ALU_OR     = 5'b00011;
+    localparam ALU_XOR    = 5'b00100;
+    localparam ALU_SLT    = 5'b00101;
+    localparam ALU_SHL    = 5'b00110;
+    localparam ALU_SHR    = 5'b00111;
+    localparam ALU_SLTU   = 5'b01000;
+    localparam ALU_SRA    = 5'b01001;
+    localparam ALU_MUL    = 5'b01010;
+    localparam ALU_MULH   = 5'b01011;
+    localparam ALU_MULHSU = 5'b01100;
+    localparam ALU_MULHU  = 5'b01101;
+    localparam ALU_DIV    = 5'b01110;
+    localparam ALU_DIVU   = 5'b01111;
+    localparam ALU_REM    = 5'b10000;
+    localparam ALU_REMU   = 5'b10001;
+    localparam ALU_PASS   = 5'b11111;
 
-    // ALU implementation
-    function [31:0] alu_compute;
-        input [31:0] op1, op2;
-        input [3:0]  control;
-        begin
-            case (control)
-                ALU_ADD:  alu_compute = op1 + op2;
-                ALU_SUB:  alu_compute = op1 - op2;
-                ALU_AND:  alu_compute = op1 & op2;
-                ALU_OR:   alu_compute = op1 | op2;
-                ALU_XOR:  alu_compute = op1 ^ op2;
-                ALU_SLT:  alu_compute = ($signed(op1) < $signed(op2)) ? 32'h1 : 32'h0;
-                ALU_SLTU: alu_compute = (op1 < op2) ? 32'h1 : 32'h0;
-                ALU_SHL:  alu_compute = op1 << op2[4:0];
-                ALU_SHR:  alu_compute = op1 >> op2[4:0];
-                ALU_SRA:  alu_compute = $signed(op1) >>> op2[4:0];
-                default:  alu_compute = op1;
-            endcase
-        end
-    endfunction
+    // M-extension helper calculations
+    wire signed [31:0] alu_op1_signed = $signed(alu_op1);
+    wire signed [31:0] alu_op2_signed = $signed(alu_op2);
+    wire signed [31:0] div_signed_result = alu_op1_signed / alu_op2_signed;
+    wire signed [31:0] rem_signed_result = alu_op1_signed % alu_op2_signed;
+
+    wire signed [63:0] mul_signed   = alu_op1_signed * alu_op2_signed;
+    wire signed [63:0] mul_signedsp = alu_op1_signed * $signed({1'b0, alu_op2});
+    wire [63:0]        mul_unsigned = {32'h0, alu_op1} * {32'h0, alu_op2};
+
+    wire div_op2_is_zero = (alu_op2 == 32'h0);
+    wire div_op1_is_min  = (alu_op1 == 32'h80000000);
+    wire div_op2_is_neg1 = (alu_op2 == 32'hFFFFFFFF);
+
+    wire [31:0] div_signed   = div_op2_is_zero ? 32'hFFFFFFFF :
+                               (div_op1_is_min && div_op2_is_neg1) ? 32'h80000000 :
+                               div_signed_result;
+
+    wire [31:0] div_unsigned = div_op2_is_zero ? 32'hFFFFFFFF :
+                               alu_op1 / alu_op2;
+
+    wire [31:0] rem_signed   = div_op2_is_zero ? alu_op1 :
+                               (div_op1_is_min && div_op2_is_neg1) ? 32'h0 :
+                               rem_signed_result;
+
+    wire [31:0] rem_unsigned = div_op2_is_zero ? alu_op1 :
+                               alu_op1 % alu_op2;
+
+    reg [31:0] alu_result_reg;
+    always @(*) begin
+        case (alu_control)
+            ALU_ADD:    alu_result_reg = alu_op1 + alu_op2;
+            ALU_SUB:    alu_result_reg = alu_op1 - alu_op2;
+            ALU_AND:    alu_result_reg = alu_op1 & alu_op2;
+            ALU_OR:     alu_result_reg = alu_op1 | alu_op2;
+            ALU_XOR:    alu_result_reg = alu_op1 ^ alu_op2;
+            ALU_SLT:    alu_result_reg = ($signed(alu_op1) < $signed(alu_op2)) ? 32'h1 : 32'h0;
+            ALU_SLTU:   alu_result_reg = (alu_op1 < alu_op2) ? 32'h1 : 32'h0;
+            ALU_SHL:    alu_result_reg = alu_op1 << alu_op2[4:0];
+            ALU_SHR:    alu_result_reg = alu_op1 >> alu_op2[4:0];
+            ALU_SRA:    alu_result_reg = $signed(alu_op1) >>> alu_op2[4:0];
+            ALU_MUL:    alu_result_reg = mul_signed[31:0];
+            ALU_MULH:   alu_result_reg = mul_signed[63:32];
+            ALU_MULHSU: alu_result_reg = mul_signedsp[63:32];
+            ALU_MULHU:  alu_result_reg = mul_unsigned[63:32];
+            ALU_DIV:    alu_result_reg = div_signed;
+            ALU_DIVU:   alu_result_reg = div_unsigned;
+            ALU_REM:    alu_result_reg = rem_signed;
+            ALU_REMU:   alu_result_reg = rem_unsigned;
+            default:    alu_result_reg = alu_op1;
+        endcase
+    end
 
     // Immediate generation
     function [31:0] generate_imm;
@@ -243,6 +289,114 @@ module riscv_core #(
             endcase
         end
     endfunction
+
+`ifdef SUPPORT_C
+    function [31:0] decompress;
+        input [15:0] c;
+        begin
+            decompress = 32'h00000000; // default to illegal instruction
+            case (c[1:0])
+                2'b00: begin
+                    case (c[15:13])
+                        3'b000: begin // c.addi4spn -> addi rd', sp, imm
+                            if (c[12:5] != 8'h0) begin
+                                decompress = {2'b00, c[10:7], c[12:11], c[5], c[6], 2'b00, 5'd2, 3'b000, 2'b01, c[4:2], 7'h13};
+                            end
+                        end
+                        3'b010: begin // c.lw -> lw rd', offset(rs1')
+                            decompress = {5'b00000, c[5], c[12:10], c[6], 2'b00, 2'b01, c[9:7], 3'b010, 2'b01, c[4:2], 7'h03};
+                        end
+                        3'b110: begin // c.sw -> sw rs2', offset(rs1')
+                            decompress = {5'b00000, c[5], c[12], 2'b01, c[4:2], 2'b01, c[9:7], 3'b010, c[11:10], c[6], 2'b00, 7'h23};
+                        end
+                        default: ;
+                    endcase
+                end
+                2'b01: begin
+                    case (c[15:13])
+                        3'b000: begin // c.nop / c.addi -> addi rd, rd, imm
+                            decompress = { {6{c[12]}}, c[12], c[6:2], c[11:7], 3'b000, c[11:7], 7'h13};
+                        end
+                        3'b001: begin // c.jal -> jal x1, imm
+                            decompress = {c[12], c[8], c[10:9], c[6], c[7], c[2], c[11], c[5:3], c[12], {8{c[12]}}, 5'd1, 7'h6f};
+                        end
+                        3'b010: begin // c.li -> addi rd, x0, imm
+                            decompress = { {6{c[12]}}, c[12], c[6:2], 5'd0, 3'b000, c[11:7], 7'h13};
+                        end
+                        3'b011: begin
+                            if (c[11:7] == 5'd2) begin // c.addi16sp -> addi sp, sp, imm
+                                decompress = { {2{c[12]}}, c[12], c[4:3], c[5], c[2], c[6], 4'b00, 5'd2, 3'b000, 5'd2, 7'h13};
+                            end else begin // c.lui -> lui rd, imm
+                                decompress = { {14{c[12]}}, c[12], c[6:2], c[11:7], 7'h37};
+                            end
+                        end
+                        3'b100: begin
+                            case (c[11:10])
+                                2'b00: begin // c.srli
+                                    decompress = {7'h00, c[6:2], 2'b01, c[9:7], 3'b101, 2'b01, c[9:7], 7'h13};
+                                end
+                                2'b01: begin // c.srai
+                                    decompress = {7'h20, c[6:2], 2'b01, c[9:7], 3'b101, 2'b01, c[9:7], 7'h13};
+                                end
+                                2'b10: begin // c.andi
+                                    decompress = { {6{c[12]}}, c[12], c[6:2], 2'b01, c[9:7], 3'b111, 2'b01, c[9:7], 7'h13};
+                                end
+                                2'b11: begin
+                                    case ( {c[12], c[6:5]} )
+                                        3'b000: decompress = {7'h20, 2'b01, c[4:2], 2'b01, c[9:7], 3'b000, 2'b01, c[9:7], 7'h33}; // c.sub
+                                        3'b001: decompress = {7'h00, 2'b01, c[4:2], 2'b01, c[9:7], 3'b100, 2'b01, c[9:7], 7'h33}; // c.xor
+                                        3'b010: decompress = {7'h00, 2'b01, c[4:2], 2'b01, c[9:7], 3'b110, 2'b01, c[9:7], 7'h33}; // c.or
+                                        3'b011: decompress = {7'h00, 2'b01, c[4:2], 2'b01, c[9:7], 3'b111, 2'b01, c[9:7], 7'h33}; // c.and
+                                        default: ;
+                                    endcase
+                                end
+                            endcase
+                        end
+                        3'b101: begin // c.j
+                            decompress = {c[12], c[8], c[10:9], c[6], c[7], c[2], c[11], c[5:3], c[12], {8{c[12]}}, 5'd0, 7'h6f};
+                        end
+                        3'b110: begin // c.beqz
+                            decompress = {c[12], c[12], c[12], c[12], c[6], c[5], c[2], 5'd0, 2'b01, c[9:7], 3'b000, c[11], c[10], c[4], c[3], c[12], 7'h63};
+                        end
+                        3'b111: begin // c.bnez
+                            decompress = {c[12], c[12], c[12], c[12], c[6], c[5], c[2], 5'd0, 2'b01, c[9:7], 3'b001, c[11], c[10], c[4], c[3], c[12], 7'h63};
+                        end
+                    endcase
+                end
+                2'b10: begin
+                    case (c[15:13])
+                        3'b000: begin // c.slli
+                            decompress = {7'h00, c[6:2], c[11:7], 3'b001, c[11:7], 7'h13};
+                        end
+                        3'b010: begin // c.lwsp
+                            decompress = {4'b0000, c[3:2], c[12], c[6:4], 2'b00, 5'd2, 3'b010, c[11:7], 7'h03};
+                        end
+                        3'b100: begin
+                            if (c[12] == 1'b0 && c[6:2] == 5'b0) begin // c.jr
+                                decompress = {12'h000, c[11:7], 3'b000, 5'd0, 7'h67};
+                            end else if (c[12] == 1'b0 && c[6:2] != 5'b0) begin // c.mv
+                                decompress = {7'h00, c[6:2], 5'd0, 3'b000, c[11:7], 7'h33};
+                            end else if (c[12] == 1'b1 && c[6:2] == 5'b0) begin
+                                if (c[11:7] == 5'b0) begin // c.ebreak
+                                    decompress = 32'h00100073;
+                                end else begin // c.jalr
+                                    decompress = {12'h000, c[11:7], 3'b000, 5'd1, 7'h67};
+                                end
+                            end else if (c[12] == 1'b1 && c[6:2] != 5'b0) begin // c.add
+                                decompress = {7'h00, c[6:2], c[11:7], 3'b000, c[11:7], 7'h33};
+                            end
+                        end
+                        3'b110: begin // c.swsp
+                            decompress = {4'b0000, c[8:7], c[12], c[6:2], 5'd2, 3'b010, c[11:9], 2'b00, 7'h23};
+                        end
+                        default: ;
+                    endcase
+                end
+                default: ;
+            endcase
+        end
+    endfunction
+`endif
 
     // Branch condition evaluation (combinational)
     wire branch_taken;
@@ -283,7 +437,9 @@ module riscv_core #(
         else if (debug_exit)
             next_pc = csr_dpc;            // Resume from debug PC
         else if (trap_taken)
-            next_pc = csr_mtvec;          // direct-mode trap vector
+            next_pc = (csr_mtvec[1:0] == 2'b01 && trap_cause[31]) ?
+                      ((csr_mtvec & 32'hFFFFFFFC) + (trap_cause[30:0] << 2)) :
+                      (csr_mtvec & 32'hFFFFFFFC);
         else if (mret_taken)
             next_pc = csr_mepc;           // return from trap
         else if (pc_sel_jump) begin
@@ -296,22 +452,82 @@ module riscv_core #(
         end
     end
 
+`ifdef SUPPORT_C
+    reg [15:0] fetch_buf;
+    reg        fetch_buf_valid;
+`endif
+
     // IF Stage
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             pc_reg <= RESET_PC;
             if_instr <= 32'h00000000;
             if_pc <= RESET_PC;
+`ifdef SUPPORT_C
+            fetch_buf_valid <= 1'b0;
+            fetch_buf <= 16'h0;
+            if_is_compressed <= 1'b0;
+`endif
         end else if (debug_enter || debug_exit || trap_taken || mret_taken) begin
             // Force PC redirect on debug/trap events (override stall)
             pc_reg <= next_pc;
             if_instr <= 32'h00000013;  // Insert NOP bubble during redirect
             if_pc <= next_pc;
+`ifdef SUPPORT_C
+            fetch_buf_valid <= 1'b0;
+            if_is_compressed <= 1'b0;
+`endif
         end else if (!stall_if && !bubble_if) begin
+`ifdef SUPPORT_C
+            if (pc_sel_jump) begin
+                pc_reg <= next_pc;
+                if_instr <= 32'h00000013;
+                if_pc <= next_pc;
+                fetch_buf_valid <= 1'b0;
+                if_is_compressed <= 1'b0;
+            end else if (fetch_buf_valid) begin
+                pc_reg <= pc_reg + 2;
+                if_instr <= {instr[15:0], fetch_buf};
+                if_pc <= pc_reg - 2;
+                fetch_buf_valid <= 1'b0;
+                if_is_compressed <= 1'b0;
+            end else if (pc_reg[1]) begin
+                if (instr[17:16] == 2'b11) begin
+                    // 32-bit cross-word instruction: stall and buffer first half
+                    fetch_buf <= instr[31:16];
+                    fetch_buf_valid <= 1'b1;
+                    pc_reg <= pc_reg + 2;
+                    if_instr <= 32'h00000013; // insert bubble
+                    if_pc <= pc_reg;
+                    if_is_compressed <= 1'b0;
+                end else begin
+                    // 16-bit compressed instruction starting at 2-byte boundary
+                    pc_reg <= pc_reg + 2;
+                    if_instr <= decompress(instr[31:16]);
+                    if_pc <= pc_reg;
+                    if_is_compressed <= 1'b1;
+                end
+            end else begin
+                if (instr[1:0] == 2'b11) begin
+                    // 32-bit aligned instruction
+                    pc_reg <= pc_reg + 4;
+                    if_instr <= instr;
+                    if_pc <= pc_reg;
+                    if_is_compressed <= 1'b0;
+                end else begin
+                    // 16-bit compressed instruction starting at 4-byte boundary
+                    pc_reg <= pc_reg + 2;
+                    if_instr <= decompress(instr[15:0]);
+                    if_pc <= pc_reg;
+                    if_is_compressed <= 1'b1;
+                end
+            end
+`else
             pc_reg <= next_pc;
             if_instr <= instr;
             if_pc <= pc_reg;   // PC of the instruction just fetched (was next_pc:
                                // an off-by-4 bug affecting branch/jump targets & mepc)
+`endif
         end
     end
 
@@ -328,6 +544,9 @@ module riscv_core #(
             id_ex_instr <= 32'h00000000;
             id_ex_pc <= 32'h00000000;
             id_ex_valid <= 1'b0;
+`ifdef SUPPORT_C
+            id_ex_is_compressed <= 1'b0;
+`endif
 
             // Initialize register file (x0–x31)
             for (rf_init_idx = 0; rf_init_idx < REG_COUNT; rf_init_idx = rf_init_idx + 1) begin
@@ -340,6 +559,9 @@ module riscv_core #(
             id_ex_instr <= if_instr;
             id_ex_pc <= if_pc;
             id_ex_valid <= !flush;
+`ifdef SUPPORT_C
+            id_ex_is_compressed <= !flush && if_is_compressed;
+`endif
 
             // Decode instruction fields
             id_opcode <= if_instr[6:0];
@@ -358,8 +580,14 @@ module riscv_core #(
             id_ex_valid <= 1'b1;
             rf_rs1_addr <= id_ex_instr[19:15];
             rf_rs2_addr <= id_ex_instr[24:20];
+`ifdef SUPPORT_C
+            id_ex_is_compressed <= id_ex_is_compressed;
+`endif
         end else begin
             id_ex_valid <= 1'b0;
+`ifdef SUPPORT_C
+            id_ex_is_compressed <= 1'b0;
+`endif
         end
     end
 
@@ -404,17 +632,31 @@ module riscv_core #(
 
             case (id_ex_instr[6:0])
                 OPCODE_RTYPE: begin
-                    case (id_ex_instr[14:12])
-                        FUNCT3_ADD_SUB: alu_control = (id_ex_instr[31:25] == FUNCT7_SUB) ? ALU_SUB : ALU_ADD;
-                        FUNCT3_AND:     alu_control = ALU_AND;
-                        FUNCT3_OR:      alu_control = ALU_OR;
-                        FUNCT3_XOR:     alu_control = ALU_XOR;
-                        FUNCT3_SLT:     alu_control = ALU_SLT;
-                        FUNCT3_SLTU:    alu_control = ALU_SLTU;   // BUG-031
-                        FUNCT3_SLL:     alu_control = ALU_SHL;
-                        FUNCT3_SHR:     alu_control = id_ex_instr[30] ? ALU_SRA : ALU_SHR; // BUG-032: SRA vs SRL
-                        default:        alu_control = ALU_ADD;
-                    endcase
+                    if (id_ex_instr[31:25] == 7'b0000001) begin
+                        case (id_ex_instr[14:12])
+                            3'b000: alu_control = ALU_MUL;
+                            3'b001: alu_control = ALU_MULH;
+                            3'b010: alu_control = ALU_MULHSU;
+                            3'b011: alu_control = ALU_MULHU;
+                            3'b100: alu_control = ALU_DIV;
+                            3'b101: alu_control = ALU_DIVU;
+                            3'b110: alu_control = ALU_REM;
+                            3'b111: alu_control = ALU_REMU;
+                            default: alu_control = ALU_ADD;
+                        endcase
+                    end else begin
+                        case (id_ex_instr[14:12])
+                            FUNCT3_ADD_SUB: alu_control = (id_ex_instr[31:25] == FUNCT7_SUB) ? ALU_SUB : ALU_ADD;
+                            FUNCT3_AND:     alu_control = ALU_AND;
+                            FUNCT3_OR:      alu_control = ALU_OR;
+                            FUNCT3_XOR:     alu_control = ALU_XOR;
+                            FUNCT3_SLT:     alu_control = ALU_SLT;
+                            FUNCT3_SLTU:    alu_control = ALU_SLTU;   // BUG-031
+                            FUNCT3_SLL:     alu_control = ALU_SHL;
+                            FUNCT3_SHR:     alu_control = id_ex_instr[30] ? ALU_SRA : ALU_SHR; // BUG-032: SRA vs SRL
+                            default:        alu_control = ALU_ADD;
+                        endcase
+                    end
                 end
                 OPCODE_ITYPE: begin
                     case (id_ex_instr[14:12])
@@ -439,7 +681,7 @@ module riscv_core #(
     end
 
     // Compute ALU result
-    assign alu_result = alu_compute(alu_op1, alu_op2, alu_control);
+    assign alu_result = alu_result_reg;
 
     // Determine writeback data (ALU result, Xcew result, PC+4 for jumps, CSR read, or load data)
     wire is_csr_read = id_ex_valid && (id_ex_instr[6:0] == OPCODE_SYSTEM) &&
@@ -464,7 +706,12 @@ module riscv_core #(
     assign wb_data = xcew_valid ? xcew_result :
                      is_csr_read ? csr_read_value :
                      is_load ? load_data :
-                     ((id_ex_instr[6:0] == OPCODE_JAL) || (id_ex_instr[6:0] == OPCODE_JALR)) ? id_ex_pc + 32'h4 :
+                      ((id_ex_instr[6:0] == OPCODE_JAL) || (id_ex_instr[6:0] == OPCODE_JALR)) ?
+`ifdef SUPPORT_C
+                      (id_ex_is_compressed ? id_ex_pc + 32'h2 : id_ex_pc + 32'h4) :
+`else
+                      id_ex_pc + 32'h4 :
+`endif
                      (id_ex_instr[6:0] == OPCODE_LUI) ? id_imm :
                      (id_ex_instr[6:0] == OPCODE_AUIPC) ? (id_ex_pc + id_imm) : // BUG-033: was ALU garbage
                      alu_result;
@@ -544,7 +791,11 @@ module riscv_core #(
     always @(*) begin
         case (csr_a)
             CSR_MSTATUS:  csr_int_rdata = csr_mstatus;
-            CSR_MISA:     csr_int_rdata = 32'h40000100; // MXL=32, ext I (M not implemented)
+`ifdef SUPPORT_C
+            CSR_MISA:     csr_int_rdata = 32'h40001104; // MXL=32, extensions I, M, C enabled
+`else
+            CSR_MISA:     csr_int_rdata = 32'h40001100; // MXL=32, extensions I, M enabled
+`endif
             CSR_MIE:      csr_int_rdata = csr_mie;
             CSR_MTVEC:    csr_int_rdata = csr_mtvec;
             CSR_MSCRATCH: csr_int_rdata = csr_mscratch;
@@ -593,6 +844,13 @@ module riscv_core #(
         id_ex_is_xcew;
 
     // Exception conditions
+    wire [31:0] target_pc = (id_ex_instr[6:0] == OPCODE_BRANCH) ? branch_target : jump_target;
+`ifdef SUPPORT_C
+    wire exc_instr_ma = id_ex_valid && pc_sel_jump && target_pc[0];
+`else
+    wire exc_instr_ma = id_ex_valid && pc_sel_jump && (target_pc[1:0] != 2'b00);
+`endif
+
     wire exc_illegal  = id_ex_valid && !legal_opcode;
     wire exc_load_ma  = is_load &&
         (((id_ex_instr[14:12]==3'b001)&&alu_result[0]) ||                 // LH
@@ -601,7 +859,7 @@ module riscv_core #(
     wire exc_store_ma = is_store &&
         (((id_ex_instr[14:12]==3'b001)&&alu_result[0]) ||                 // SH
          ((id_ex_instr[14:12]==3'b010)&&(alu_result[1:0]!=2'b00)));        // SW
-    wire any_exception = exc_illegal | is_ecall | is_ebreak | exc_load_ma | exc_store_ma;
+    wire any_exception = exc_illegal | is_ecall | is_ebreak | exc_load_ma | exc_store_ma | exc_instr_ma;
 
     // Interrupt pending (globally + individually enabled)
     wire irq_pending = mstatus_mie &&
@@ -629,7 +887,8 @@ module riscv_core #(
     // Trap cause / mtval (synchronous exceptions take priority over interrupts)
     reg [31:0] trap_cause, trap_tval;
     always @(*) begin
-        if (exc_illegal)             begin trap_cause=32'd2;        trap_tval=id_ex_instr; end
+        if (exc_instr_ma)            begin trap_cause=32'd0;        trap_tval=target_pc;   end
+        else if (exc_illegal)        begin trap_cause=32'd2;        trap_tval=id_ex_instr; end
         else if (is_ecall)           begin trap_cause=32'd11;       trap_tval=32'h0;       end
         else if (is_ebreak)          begin trap_cause=32'd3;        trap_tval=id_ex_pc;    end
         else if (exc_load_ma)        begin trap_cause=32'd4;        trap_tval=alu_result;  end
@@ -667,7 +926,7 @@ module riscv_core #(
 
     // Debug mode entry conditions
     wire debug_halt_request = dm_halt_req_sync && !debug_mode;
-    wire debug_ebreak       = is_ebreak && !debug_mode;
+    wire debug_ebreak       = is_ebreak && !debug_mode && csr_dcsr[15];
     wire debug_trigger_hit  = i_debug_trigger_hit && !debug_mode;
     // Single-step: after resume with dcsr.step=1, re-enter debug after one instruction completes
     // step_armed prevents re-entry on the same cycle as resume
@@ -751,7 +1010,13 @@ module riscv_core #(
                 debug_prv    <= csr_mstatus[12:11]; // Save MPP
                 // For single-step: dpc = next instruction (after the one just executed)
                 // For halt/ebreak/trigger: dpc = current instruction (not yet completed)
-                csr_dpc      <= debug_step_reenter ? (id_ex_pc + 4) : id_ex_pc;
+                csr_dpc      <= debug_step_reenter ?
+`ifdef SUPPORT_C
+                                (id_ex_is_compressed ? id_ex_pc + 2 : id_ex_pc + 4) :
+`else
+                                (id_ex_pc + 4) :
+`endif
+                                id_ex_pc;
                 csr_dcsr[8:6] <= debug_step_reenter ? 3'b100 :  // single step
                                   debug_ebreak ? 3'b001 :  // ebreak
                                   debug_halt_request ? 3'b011 : // halt req
@@ -917,7 +1182,11 @@ module riscv_core #(
                             CSR_DSCRATCH0:  o_dbg_reg_rdata <= csr_dscratch0;
                             CSR_DSCRATCH1:  o_dbg_reg_rdata <= csr_dscratch1;
                             CSR_MSTATUS:    o_dbg_reg_rdata <= csr_mstatus;
-                            CSR_MISA:       o_dbg_reg_rdata <= 32'h40000100;
+`ifdef SUPPORT_C
+                            CSR_MISA:       o_dbg_reg_rdata <= 32'h40001104;
+`else
+                            CSR_MISA:       o_dbg_reg_rdata <= 32'h40001100;
+`endif
                             CSR_MIE:        o_dbg_reg_rdata <= csr_mie;
                             CSR_MTVEC:      o_dbg_reg_rdata <= csr_mtvec;
                             CSR_MSCRATCH:   o_dbg_reg_rdata <= csr_mscratch;

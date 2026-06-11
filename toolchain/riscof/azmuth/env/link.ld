@@ -4,7 +4,7 @@
    is parameterized with RESET_PC=0x80000000 and the testbench windows memory
    there). Sections packed tightly to keep the flat binary small. */
 OUTPUT_ARCH( "riscv" )
-ENTRY(rvtest_entrypoint)
+ENTRY(rvtest_entry_point)
 
 SECTIONS
 {

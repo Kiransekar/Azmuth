@@ -1,0 +1,29 @@
+1a2
+> 00000000
+3,15c4,15
+< babecafe
+< babecafe
+< babecafe
+< babecafe
+< babecafe
+< babecafe
+< babecafe
+< babecafe
+< babecafe
+< babecafe
+< babecafe
+< babecafe
+< babecafe
+---
+> 00000000
+> 00000000
+> deadbeef
+> deadbeef
+> 80000680
+> 80000244
+> 00000000
+> 00000000
+> 00000000
+> 00000000
+> 00000000
+> deadbeef

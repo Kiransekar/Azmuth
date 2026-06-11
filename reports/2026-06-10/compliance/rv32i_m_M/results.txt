@@ -1,0 +1,9 @@
+PASS  div-01
+PASS  divu-01
+PASS  mul-01
+PASS  mulh-01
+PASS  mulhsu-01
+PASS  mulhu-01
+PASS  rem-01
+PASS  remu-01
+arch-test rv32i_m/M : PASS=8 FAIL=0 ERROR=0

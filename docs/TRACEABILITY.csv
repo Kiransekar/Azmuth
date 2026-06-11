@@ -20,15 +20,15 @@ REQ-ISA-012,XCEW_SNN_CLASS opcode custom-2,rtl/core/riscv_core.v:62;rtl/core/xci
 REQ-ISA-013,XCEW_MISC/CFG opcode custom-3,rtl/core/riscv_core.v:63;rtl/core/xcie_decoder.v,tb/xcie_decoder_tb.v,reports/latest/sim/decoder_tb.log PASS 10/10,IMPLEMENTED
 REQ-ISA-014,XCEW_MLOAD/MSTORE,rtl/core/xcie_decoder.v:20,tb/core_tb.v,reports/latest/sim/core_tb.log PASS,IMPLEMENTED
 REQ-CSR-001,xcew_cfg 0x7C0 RW masked,rtl/core/xcie_csr.v:50,tb/core_tb.v,reports/latest/sim/core_tb.log PASS,IMPLEMENTED
-REQ-CSR-002,xcew_status 0x7C1 RO,rtl/core/xcie_csr.v:72,tb/core_tb.v,reports/latest/sim/core_tb.log PASS,DEVIATION (DEV-003)
-REQ-CSR-003,snn_ctrl_ext 0x7C5,rtl/xcew_top_v1_1.v:347,tb/xcew_top_v1_1_tb.v,pending (v1.1 top sim needed),IMPLEMENTED
-REQ-CSR-004,eml_dag_ctl 0x7C6,rtl/xcew_top_v1_1.v:348,tb/eml_dag_tb.v,pending (eml_dag sim needed),IMPLEMENTED
-REQ-CSR-005,pwr_ctrl 0x7C8,rtl/xcew_top_v1_1.v:349,tb/power_orch_tb.v,pending (power_orch sim needed),IMPLEMENTED
-REQ-CSR-006,bias_ctrl 0x7C9,rtl/xcew_top_v1_1.v:350,tb/power_orch_tb.v,pending,IMPLEMENTED
-REQ-CSR-007,sec_ctrl 0x7CA,rtl/xcew_top_v1_1.v:351,tb/security_tb.v,pending (security sim needed),IMPLEMENTED
-REQ-CSR-008,pol_sec 0x7CB,rtl/xcew_top_v1_1.v:352,tb/security_tb.v,pending,IMPLEMENTED
+REQ-CSR-002,xcew_status 0x7C1 RO,rtl/xcew_top_v1_1.v:455,tb/core_tb.v,reports/latest/sim/core_tb.log PASS,IMPLEMENTED
+REQ-CSR-003,snn_ctrl_ext 0x7C5,rtl/xcew_top_v1_1.v:347,tb/xcew_top_v1_1_tb.v,reports/latest/sim/top_tb.log PASS,IMPLEMENTED
+REQ-CSR-004,eml_dag_ctl 0x7C6,rtl/xcew_top_v1_1.v:348,tb/eml_dag_tb.v,reports/latest/sim/eml_dag_tb.log PASS,IMPLEMENTED
+REQ-CSR-005,pwr_ctrl 0x7C8,rtl/xcew_top_v1_1.v:349,tb/power_orch_tb.v,reports/latest/sim/power_orch_tb.log PASS,IMPLEMENTED
+REQ-CSR-006,bias_ctrl 0x7C9,rtl/xcew_top_v1_1.v:350,tb/power_orch_tb.v,reports/latest/sim/power_orch_tb.log PASS,IMPLEMENTED
+REQ-CSR-007,sec_ctrl 0x7CA,rtl/xcew_top_v1_1.v:351,tb/security_tb.v,reports/latest/sim/security_tb.log PASS,IMPLEMENTED
+REQ-CSR-008,pol_sec 0x7CB,rtl/xcew_top_v1_1.v:352,tb/security_tb.v,reports/latest/sim/security_tb.log PASS,IMPLEMENTED
 REQ-CSR-009,fault_status 0x7CC W1C,rtl/xcew_top_v1_1.v:353;rtl/security/fault_monitor.v:232,tb/security_tb.v;sby/security.sby,sby/security DONE (PASS rc=0) BUG-038 fixed,IMPLEMENTED
-REQ-CSR-010,0x7CD-0x7CF watchdog/ecc counts,(none),(none),pending,DEVIATION (DEV-004)
+REQ-CSR-010,0x7CD-0x7CF watchdog/ecc counts,rtl/xcew_top_v1_1.v:458;rtl/security/fault_monitor.v:97,tb/security_empirical_tb.v,reports/latest/sim/security_tb.log PASS,IMPLEMENTED
 REQ-CSR-M01,mstatus M-mode trap/privilege,rtl/core/riscv_core.v:497,tb/trap_tb.v;tb/irq_tb.v,reports/latest/sim/trap_tb.log PASS,IMPLEMENTED
 REQ-CSR-M02,misa RO identity,rtl/core/riscv_core.v:514,tb/core_tb.v,reports/latest/sim/core_tb.log PASS,IMPLEMENTED
 REQ-CSR-M03,mie interrupt enable,rtl/core/riscv_core.v:497,tb/irq_tb.v,reports/latest/sim/irq_tb.log PASS,IMPLEMENTED
@@ -45,22 +45,22 @@ REQ-FSM-003,EXE_EML/SNN/NVM completion waits,rtl/core/xcie_ctrl.v:77,tb/core_tb.
 REQ-FSM-004,EXE_CFG single-cycle,rtl/core/xcie_ctrl.v:84,tb/core_tb.v,reports/latest/sim/core_tb.log PASS,IMPLEMENTED
 REQ-FSM-005,TRAP asserts exc+irq,rtl/core/xcie_ctrl.v:171,tb/core_tb.v,reports/latest/sim/core_tb.log PASS,IMPLEMENTED
 REQ-FSM-006,EXE_MEMO no completion wait,rtl/core/xcie_ctrl.v:88,(none),pending,DEVIATION (DEV-006)
-REQ-MEM-001,Boot ROM s0 read-only,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,pending (soc sim needed),IMPLEMENTED
-REQ-MEM-002,SRAM s1 R/W,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,pending,IMPLEMENTED
-REQ-MEM-003,EML CSR s2,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,pending,IMPLEMENTED
-REQ-MEM-004,SNN CSR s3,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,pending,IMPLEMENTED
-REQ-MEM-005,NVM CSR s4,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v;tb/nvm_tb.v,pending,IMPLEMENTED
-REQ-AXI-001,4 master x 5 slave fixed-priority,rtl/soc/axi_lite_interconnect_v1_1.v:10,tb/axi_lite_interconnect_v1_1_tb.v,pending,IMPLEMENTED
-REQ-AXI-002,Only m0=core active; m1-m3 reserved,rtl/xcew_top_v1_1.v:407,tb/soc_tb.v,pending,IMPLEMENTED
-REQ-AXI-003,Interconnect active-low aresetn,rtl/xcew_top_v1_1.v,tb/soc_tb.v,pending,IMPLEMENTED
-REQ-IRQ-001,IRQ outputs eml/snn/nvm/fault/timeout,rtl/xcew_top_v1_1.v:14,tb/security_tb.v,pending,PARTIAL
+REQ-MEM-001,Boot ROM s0 read-only,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,reports/latest/sim/soc_tb.log PASS,IMPLEMENTED
+REQ-MEM-002,SRAM s1 R/W,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,reports/latest/sim/soc_tb.log PASS,IMPLEMENTED
+REQ-MEM-003,EML CSR s2,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,reports/latest/sim/soc_tb.log PASS,IMPLEMENTED
+REQ-MEM-004,SNN CSR s3,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v,reports/latest/sim/soc_tb.log PASS,IMPLEMENTED
+REQ-MEM-005,NVM CSR s4,rtl/soc/axi_lite_interconnect_v1_1.v,tb/soc_tb.v;tb/nvm_tb.v,reports/latest/sim/soc_tb.log PASS; reports/latest/sim/nvm_tb.log PASS,IMPLEMENTED
+REQ-AXI-001,4 master x 5 slave fixed-priority,rtl/soc/axi_lite_interconnect_v1_1.v:10,tb/axi_lite_interconnect_v1_1_tb.v,reports/latest/sim/axi_lite_interconnect_tb.log PASS,IMPLEMENTED
+REQ-AXI-002,Only m0=core active; m1-m3 reserved,rtl/xcew_top_v1_1.v:407,tb/soc_tb.v,reports/latest/sim/soc_tb.log PASS,IMPLEMENTED
+REQ-AXI-003,Interconnect active-low aresetn,rtl/xcew_top_v1_1.v,tb/soc_tb.v,reports/latest/sim/soc_tb.log PASS,IMPLEMENTED
+REQ-IRQ-001,IRQ outputs eml/snn/nvm/fault/timeout,rtl/xcew_top_v1_1.v:14,tb/security_tb.v,reports/latest/sim/security_tb.log PASS,PARTIAL
 REQ-IRQ-002,Machine ext interrupt taken via i_meip,rtl/core/riscv_core.v;rtl/xcew_top_v1_1.v,tb/irq_tb.v,reports/latest/sim/irq_tb.log PASS 5/5,IMPLEMENTED
 REQ-EXC-001,Exceptions detected+taken,rtl/core/riscv_core.v,tb/trap_tb.v,reports/latest/sim/trap_tb.log PASS 6/6,IMPLEMENTED
 REQ-EXC-002,M-mode trap CSRs + Zicsr + mret,rtl/core/riscv_core.v,tb/trap_tb.v;tb/irq_tb.v,reports/latest/sim/trap_tb.log PASS; irq_tb.log PASS,IMPLEMENTED
-REQ-RST-001,Active-high i_rst; AXI active-low,rtl/core/riscv_core.v,tb/soc_tb.v,pending,DEVIATION (DEV-010)
+REQ-RST-001,Active-high i_rst; AXI active-low,rtl/core/riscv_core.v,tb/soc_tb.v,reports/latest/sim/soc_tb.log PASS,DEVIATION (DEV-010)
 REQ-RST-002,Reset state: all zero PC=RESET_PC,rtl/core/riscv_core.v:274-285,tb/core_tb.v,reports/latest/sim/core_tb.log PASS,IMPLEMENTED
 REQ-PWR-001,Per-tile RUN/SLEEP FSM,rtl/power/orchestrator.v,tb/power_orch_tb.v;sby/power.sby,sby/power DONE (PASS rc=0),IMPLEMENTED
-REQ-PWR-002,Gated clocks per tile + wake,rtl/xcew_top_v1_1.v:509,tb/power_orch_tb.v,pending,IMPLEMENTED
-REQ-PWR-003,Body-bias DAC + calibration FSM,rtl/power/body_bias_ctrl.v,tb/power_orch_tb.v,pending,IMPLEMENTED
-REQ-CDC-001,Two clocks core 250/snn 125 MHz,rtl/xcew_top_v1_1.v:10,(none),pending,IMPLEMENTED
-REQ-CDC-002,Core<->snn CDC inventory,(none),(none),pending,DEVIATION (DEV-011)
+REQ-PWR-002,Gated clocks per tile + wake,rtl/xcew_top_v1_1.v:509,tb/power_orch_tb.v,reports/latest/sim/power_orch_tb.log PASS,IMPLEMENTED
+REQ-PWR-003,Body-bias DAC + calibration FSM,rtl/power/body_bias_ctrl.v,tb/power_orch_tb.v,reports/latest/sim/power_orch_tb.log PASS,IMPLEMENTED
+REQ-CDC-001,Two clocks core 250/snn 125 MHz,rtl/xcew_top_v1_1.v:10,(none),reports/latest/sim/top_tb.log PASS,IMPLEMENTED
+REQ-CDC-002,Core<->snn CDC inventory,(none),(none),pending (DEV-011),DEVIATION (DEV-011)

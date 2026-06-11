@@ -114,7 +114,7 @@ module eml_constant_time (
                         operation <= cfg[7:0];  // Extract operation code
 
                         // Set target cycles based on operation type
-                        case (operation)
+                        case (cfg[7:0])
                             OP_EXP: target_cycles <= FIXED_EXP_CYCLES;
                             OP_LN:  target_cycles <= FIXED_LN_CYCLES;
                             OP_MUL: target_cycles <= FIXED_MUL_CYCLES;
@@ -177,7 +177,7 @@ module eml_constant_time (
 
                     // Move to padding if in constant time mode
                     if (const_time_en) begin
-                        padding_cycles <= target_cycles - current_op_cycles;
+                        padding_cycles <= (target_cycles > 16'd3) ? (target_cycles - 16'd3) : 16'd0;
                         state <= ST_PAD;
                     end
                     else begin
@@ -202,7 +202,7 @@ module eml_constant_time (
                     valid_out <= 1'b1;
                     stall_pipeline <= 1'b0;
 
-                    if (ready_in) begin  // Output accepted
+                    if (valid_out && ready_in) begin  // Output accepted
                         valid_out <= 1'b0;
                         ready_out <= 1'b1;  // Ready for next input
                         state <= ST_IDLE;
