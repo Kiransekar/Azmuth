@@ -1,0 +1,158 @@
+diff --git a/rtl/eml/eml_unit.v b/rtl/eml/eml_unit.v
+index 7bd07d7..8572506 100644
+--- a/rtl/eml/eml_unit.v
++++ b/rtl/eml/eml_unit.v
+@@ -28,6 +28,7 @@ module eml_unit (
+     localparam BRANCH_CUT_BIT = 7;
+ 
+     // Pipeline stage indicators
++    localparam ST_IDLE  = 3'b000;
+     localparam ST_FETCH = 3'b001;
+     localparam ST_EXP   = 3'b010;
+     localparam ST_LN    = 3'b011;
+@@ -226,12 +227,12 @@ module eml_unit (
+             fetch_hash <= 0;
+             fetch_valid <= 1'b0;
+         end else begin
+-            if (i_valid) begin
++            if (i_valid && o_ready) begin      // latch ONLY on acceptance
+                 fetch_rs1 <= i_rs1;
+                 fetch_rs2 <= i_rs2;
+                 fetch_hash <= calculate_hash(i_rs1, i_rs2);
+                 fetch_valid <= 1'b1;
+-            end else begin
++            end else if (current_stage == ST_WB) begin
+                 fetch_valid <= 1'b0;
+             end
+         end
+@@ -246,6 +247,8 @@ module eml_unit (
+                          memo_valid[memo_idx] &
+                          (memo_tags[memo_idx] == current_hash);
+     reg memo_hit_d1, memo_hit_d2;
++    reg        memo_hit_r;
++    reg [31:0] exp_result_r, ln_result_r, result_r;
+     reg [31:0] memo_data_out;
+ 
+     always @(posedge i_clk or posedge i_rst) begin
+@@ -266,71 +269,72 @@ module eml_unit (
+             memo_hit_d1 <= memo_hit_comb;
+             memo_data_out <= memo_data[memo_idx];
+ 
+-            // Handle depth counter
+-            if (i_valid) begin
++            // Depth accounting: one increment per ACCEPTED operation
++            if (current_stage == ST_IDLE && i_valid && o_ready)
+                 depth_cnt <= depth_cnt + 1;
+-            end else if (current_stage == ST_WB) begin
+-                depth_cnt <= 0;  // Reset on completion
+-            end
+-
+-            // Check depth limit
++            else if (current_stage == ST_WB)
++                depth_cnt <= 0;
+             exc_depth <= (depth_cnt > (i_cfg[MAX_DEPTH_END:MAX_DEPTH_START] + 1)) ? 1'b1 : 1'b0;
+ 
+-            // Execute pipeline stages
+-            if (i_valid) begin
+-                current_stage <= ST_FETCH;
+-
+-                // Stage 1: Fetch and check memo cache
+-                if (current_stage == ST_FETCH) begin
+-                    memo_hit_d2 <= memo_hit_d1;
+-                    if (memo_hit_d1) begin
+-                        // Memo hit: return cached value
+-                        o_rd <= memo_data_out;
+-                        o_valid <= 1'b1;
+-                        current_stage <= ST_WB;
++            // o_valid is STICKY: set at WB, cleared when the next
++            // operation is accepted (result-holding register contract;
++            // a 1-cycle pulse loses fast memo-hit results to slow pollers)
++
++            // Free-running operation FSM: once accepted, runs to WB
++            // regardless of i_valid (fixes hang when requester drops valid).
++            case (current_stage)
++                ST_IDLE: begin
++                    if (i_valid && o_ready) begin
++                        o_valid <= 1'b0;
++                        o_exc   <= 1'b0;
++                        current_stage <= ST_FETCH;
++                    end
++                end
++                ST_FETCH: begin
++                    // memo lookup uses the hash latched at acceptance.
++                    // SECURITY: hit and miss take the SAME path length —
++                    // shortcutting hits leaks operand history via timing
++                    // (memoization keeps its energy benefit only).
++                    if (memo_valid[memo_idx] &&
++                        (memo_tags[memo_idx] == current_hash)) begin
++                        result_r   <= memo_data[memo_idx];
++                        memo_hit_r <= 1'b1;
+                     end else begin
+-                        // Memo miss: proceed with computation
+-                        current_stage <= ST_EXP;
++                        memo_hit_r <= 1'b0;
+                     end
++                    current_stage <= ST_EXP;
+                 end
+-                // Stage 2: EXP calculation
+-                else if (current_stage == ST_EXP) begin
++                ST_EXP: begin                      // real work in the stage
++                    exp_result_r  <= compute_exp(fetch_rs1);
+                     current_stage <= ST_LN;
+                 end
+-                // Stage 3: LN calculation
+-                else if (current_stage == ST_LN) begin
++                ST_LN: begin
++                    ln_result_r   <= compute_ln(fetch_rs2);
+                     current_stage <= ST_SUB;
+                 end
+-                // Stage 4: SUB and complex operations
+-                else if (current_stage == ST_SUB) begin
++                ST_SUB: begin
++                    if (!memo_hit_r)
++                        result_r <= exp_result_r - ln_result_r;
+                     current_stage <= ST_WB;
+                 end
+-                // Stage 5: Write back
+-                else if (current_stage == ST_WB) begin
+-                    // Final result
+-                    o_rd <= compute_exp(fetch_rs1) - compute_ln(fetch_rs2);
+-
+-                    // Update memo cache on miss
+-                    if (!memo_hit_comb) begin
+-                        memo_tags[memo_idx] <= current_hash[7:0];
+-                        memo_data[memo_idx] <= o_rd;
++                ST_WB: begin
++                    o_rd    <= result_r;
++                    o_valid <= 1'b1;
++                    o_exc   <= exc_depth;
++                    // memo update on miss with the FRESH result
++                    // (old code cached stale o_rd -> cache poisoning)
++                    if (!memo_hit_r) begin
++                        memo_tags[memo_idx]  <= current_hash[7:0];
++                        memo_data[memo_idx]  <= result_r;
+                         memo_valid[memo_idx] <= 1'b1;
+                     end
+-
+-                    o_valid <= 1'b1;
+-
+-                    // Check for exceptions
+-                    o_exc <= exc_depth;
++                    current_stage <= ST_IDLE;
+                 end
+-            end
+-            else begin
+-                // Clear outputs when not valid
+-                o_valid <= 1'b0;
+-                o_exc <= 1'b0;
+-            end
++                default: current_stage <= ST_IDLE;
++            endcase
+         end
+     end
+ 
+-    assign o_ready = ~o_valid;  // Ready when output is not valid
++    assign o_ready = (current_stage == ST_IDLE);
+ 
+ endmodule
+\ No newline at end of file
