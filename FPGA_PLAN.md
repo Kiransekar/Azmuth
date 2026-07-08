@@ -269,21 +269,44 @@ the ECC encode — ILA the 39-bit bus at the controller boundary.
 ##             on Azmuth hardware (1–2 weeks)
 ════════════════════════════════════════════════════════════════════════════
 
-**Source of truth:** INDUSTRY_TARGET.md §4. Dataset: Case Western Reserve
-University Bearing Data Center corpus (drive-end accelerometer, 12 kHz,
-SKF 6205, seeded inner-race/outer-race/ball faults × 0.007″/0.014″/0.021″,
-0–3 hp loads). Standard 10-class split. Commit the exact file list +
-preprocessing script + split definition to `docs/references/cwru_manifest.md`
-— reviewers must be able to reproduce the split byte-for-byte.
+**Source of truth:** INDUSTRY_TARGET.md §4 v1.1 + docs/RESEARCH_FINDINGS.md.
+Dataset: Case Western Reserve University Bearing Data Center corpus
+(drive-end accelerometer, 12 kHz, SKF 6205, seeded inner-race/outer-race/
+ball faults × 0.007″/0.014″/0.021″, 0–3 hp loads). De-facto standard
+benchmark (F-4). Commit the exact file list + preprocessing + split to
+`docs/references/cwru_manifest.md` — reproducible byte-for-byte.
 
-**GOAL:** the numbers INDUSTRY_TARGET.md promises, measured, on hardware:
-accuracy, cycles/frame per stage, frames/s headroom, ZERO jitter, the Xcew
-delta across three build configs, and the STDP adaptation result.
+**TWO NON-NEGOTIABLE PROTOCOL RULES (from the research — a plan that ignores
+these publishes numbers a reviewer will destroy):**
+1. **Bearing-independent splits (F-5, Hendriks 2022):** train and test use
+   DIFFERENT physical bearings. The common ≥99% CWRU numbers are data-
+   leakage artifacts (same bearing in train+test). Every accuracy number
+   Azmuth publishes is under leakage-safe partitioning or it is not
+   credible. Note this in the manifest and enforce it in the split script.
+2. **Novelty detection is the PRIMARY metric (F-8):** train on normal-only
+   data, measure fault-detection ROC after simulated baseline drift — the
+   STDP-differentiated, actually-bought capability. 10-class accuracy is
+   SECONDARY, reported at whatever it lands, never gated at a hoped ≥95%
+   (no verified SNN-on-CWRU accuracy at ~256-neuron scale under leakage-safe
+   splits exists — F-8; do not promise one).
+
+**GOAL:** the numbers INDUSTRY_TARGET.md commits to, MEASURED on hardware
+under the two rules above: novelty ROC (primary) + leakage-safe 10-class
+accuracy (secondary), cycles/frame per stage, frames/s headroom, ZERO
+jitter, the Xcew delta across three build configs, the STDP adaptation
+result. **Feature-adequacy caveat (F-7):** the one verified SNN-bearing
+paper used Local Mean Decomposition, NOT simple features — if the EML
+exp/ln primitives prove insufficient vs an LMD-class front-end, publish that
+gap as a finding (engineering task or honest limitation), never paper over
+it with a leaky split.
 
 ### F7.1 Host-side golden pipeline FIRST — no board time before this is green
 `fpga/sw/cm_golden.py` (numpy):
 1. Load CWRU .mat files per the manifest; frame into 2048-sample windows,
-   75% overlap for training statistics, no overlap for test.
+   75% overlap for training statistics, no overlap for test. **Split by
+   physical bearing, not by random frame (F-5): no bearing appears in both
+   train and test.** Overlapping frames from one recording stay on one side
+   of the split (else frames leak).
 2. Features per frame (float reference): log band energies over bearing-
    characteristic bands (BPFO/BPFI/BSF/FTF ±harmonics computed from rpm),
    total RMS, kurtosis, crest factor → feature vector (dimension recorded).
@@ -292,14 +315,20 @@ delta across three build configs, and the STDP adaptation result.
    EML accuracy evidence P3-T2 applied to real data).
 4. TTFS spike encoding (earlier spike = larger feature; encoding window and
    resolution documented).
-5. SNN-256 golden model (P3-T3) trained/configured offline; 10-class
-   accuracy + confusion matrix. STDP novelty leg: train on normal-only,
-   measure fault-detection ROC after simulated baseline drift.
-**CHECKPOINT F7.1:** `cm_golden.py` reproduces literature-plausible
-accuracy on the standard split; the Q16.16 leg is within its documented
-tolerance of float; all plots to docs/evidence/benchmark/. The measured
-numbers — whatever they are — replace INDUSTRY_TARGET.md §4's [verify]
-placeholders via the trust ledger (never edit INDUSTRY_TARGET.md itself).
+5. SNN-256 golden model (P3-T3): novelty leg PRIMARY (train normal-only,
+   fault-detection ROC after simulated baseline drift); 10-class accuracy +
+   confusion matrix SECONDARY. BOTH under the bearing-independent split.
+   Also report the "leaky standard split" number ALONGSIDE the leakage-safe
+   one — the gap between them is itself honest, publishable evidence and
+   pre-empts the reviewer who assumes you cheated.
+**CHECKPOINT F7.1:** `cm_golden.py` produces (a) a leakage-safe novelty ROC,
+(b) leakage-safe AND leaky 10-class accuracy side by side, (c) the Q16.16
+feature leg within documented tolerance of float; all plots to
+docs/evidence/benchmark/. The measured numbers — whatever they are, high or
+low — become the trust-ledger entries and replace INDUSTRY_TARGET.md's
+[verify] placeholders via the ledger (never edit INDUSTRY_TARGET.md itself).
+If accuracy is modest, that is the honest result; the pitch leans on novelty
+detection + determinism + completeness, not on beating heavier models.
 
 ### F7.2 The firmware — `firmware/apps/bench_cm/` (TOOLCHAIN S9-T1)
 Three build configs from one source tree:
@@ -335,8 +364,9 @@ stated.
 ### F7.4 The published table (docs/evidence/benchmark/cm_bench.md)
 1. Accuracy: hardware (c) vs golden (must match P3-T3-style — spike-time
    equivalence on a sampled subset, label equivalence on the full set);
-   10-class % + confusion matrix; STDP novelty ROC + the R2-T2 drift demo
-   numbers.
+   novelty ROC (PRIMARY) + leakage-safe 10-class % + confusion matrix
+   (SECONDARY) + the leaky-split number shown alongside for honesty (F-5);
+   the R2-T2 drift-adaptation numbers.
 2. Cycles table: per stage × config (a)/(b)/(c); the (a)→(b) delta is the
    EML value, (b)→(c) is the SNN value — Xcew's published worth.
 3. JITTER=0 line (or per-path counts + justification).

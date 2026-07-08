@@ -1,185 +1,216 @@
 <!-- ============================================================================
-  AZMUTH TARGET-INDUSTRY ANALYSIS & BENCHMARK DEFINITION — v1.0
+  AZMUTH TARGET-INDUSTRY ANALYSIS & BENCHMARK DEFINITION — v1.1
   ============================================================================
-  STATUS: READ-ONLY analysis document. Positioning tasks that act on this
+  STATUS: READ-ONLY analysis document. v1.1 (2026-07-08) rebuilds v1.0 on a
+  verified evidence base (docs/RESEARCH_FINDINGS.md — 6-angle web research,
+  25 claims adversarially verified). Every non-obvious market/feasibility
+  fact links to a finding ID (F-n) there; anything without one is `[verify]`
+  and must NOT be asserted as fact. Positioning tasks that act on this
   analysis live in RISK_PLAN.md; the executable benchmark lives in
-  FPGA_PLAN.md Phase F7. Market figures marked [verify] are order-of-
-  magnitude planning inputs; RISK_PLAN R2-T3 replaces them with cited data.
+  FPGA_PLAN.md Phase F7.
+
+  v1.0 → v1.1 changelog (what the research overturned):
+   - Xylo IMU is a DIRECT shipping competitor in this exact niche (F-1) —
+     framing shifts from "empty niche" to "occupied niche we out-complete."
+   - CWRU standard splits LEAK (same physical bearings train+test, F-5);
+     the ≥95% 10-class gate is UNSUPPORTED (F-8) — reframed around
+     leakage-safe splits + novelty detection.
+   - "simple features suffice" was REFUTED (F-7) — feature adequacy is open.
+   - bearing-failure % is CONTESTED (24-42%, denominator-dependent, F-14) —
+     no single number asserted.
+   - market-size/CAGR/price/battery-norm figures did NOT verify (F-15) —
+     kept as [verify].
   ============================================================================ -->
 
-# Azmuth — Target Industry, Breakdown, and Benchmark Definition
+# Azmuth — Target Industry, Breakdown, and Benchmark Definition (v1.1)
 
-## 1. Executive decision
+## 0. What changed and why it still holds
 
-**Primary target: industrial machine-condition monitoring (predictive
-maintenance) — always-on vibration/acoustic anomaly detection at the sensor
-node**, on rotating machinery (motors, pumps, fans, compressors, gearboxes,
-bearings).
+The research **did not refute** the target choice — industrial vibration
+condition monitoring is a real market that neuromorphic silicon is
+explicitly built for. But it refuted the *comfortable* version of the story.
+The niche is **already occupied by a shipping competitor** (SynSense Xylo
+IMU, <500 µW, launched 2023 — F-1), the go-to **benchmark protocol is a
+data-leakage trap** (F-5), and the **≥95% accuracy hope has no evidence**
+(F-8). The target survives because Azmuth's defensible ground is not "an SNN
+for vibration" (taken) but **a complete, auditable, sovereign RISC-V SoC**
+that happens to include one. Everything below is rebuilt on that harder,
+truer footing.
 
-**Secondary (documented fallback): wearable/ambulatory biosignal
-monitoring** (ECG arrhythmia flagging) — architecturally similar workload,
-kept warm as a pivot, not pursued in parallel.
+## 1. Decision
 
-**Benchmark workload: rolling-element bearing fault classification on the
-CWRU (Case Western Reserve University) bearing dataset** — the de-facto
-public standard for this industry — running end-to-end on Azmuth
-(EML feature extraction → spike encoding → SNN-256 classification →
-NVM event logging), validated on FPGA per FPGA_PLAN.md Phase F7.
+**Primary target: industrial machine-condition monitoring / predictive
+maintenance — always-on vibration anomaly detection at battery-powered
+wireless sensor nodes on rotating machinery** (motors, pumps, fans,
+compressors, gearboxes, bearings). VALIDATED as a real neuromorphic-silicon
+market (F-1), CONTESTED by an incumbent (F-1).
 
-## 2. Why this industry — the decision matrix
+**Secondary (documented fallback): wearable/ambulatory biosignal monitoring**
+(ECG arrhythmia flagging) — architecturally similar, kept warm, not pursued
+in parallel.
 
-Candidates were scored against what the architecture actually is
-(RV32IMC + constant-time EML fixed-point math + 256-neuron TTFS SNN with
-on-chip STDP learning + NVM-ready controller + per-tile power orchestration
-+ fault monitor/SECDED/watchdog + honest 100 MHz @ 130nm):
+**Benchmark: CWRU bearing-fault classification under bearing-INDEPENDENT
+(leakage-safe) train/test splits** (F-4, F-5), with novelty/anomaly
+detection as the primary metric and 10-class accuracy as a secondary,
+honestly-reported figure (F-8). Paderborn / NASA IMS as generalization sets
+`[verify]`.
 
-| Criterion | Industrial condition monitoring | Wearable biosignal | Smart-agri/aqua sensing | Consumer audio (KWS) | Defense/space edge AI |
+## 2. Why this industry — the decision matrix (unchanged direction, corrected competition row)
+
+Scored against what the architecture is (RV32IMC ~100 MHz-target core +
+constant-time Q16.16 EML math + 256-neuron TTFS SNN with on-chip STDP + NVM
+controller + per-tile power/body-bias + fault monitor/SECDED/watchdog + real
+RISC-V Debug Module, on a SKY130 MPW shuttle):
+
+| Criterion | Industrial CM | Wearable biosignal | Agri/aqua sensing | Consumer audio (KWS) | Defense/space edge AI |
 |---|---|---|---|---|---|
-| Signal bandwidth fits 100 MHz + kHz-band sensing | ✅ vibration ≤20 kHz | ✅ ECG ≤1 kHz | ✅ | ✅ 16 kHz | ✅ |
-| Event-driven/always-on fits SNN+TTFS | ✅ anomaly = rare event | ✅ | ✅ | ✅ | ✅ |
-| **On-chip STDP learning is a real differentiator** | ✅✅ every machine's baseline differs; per-node adaptation avoids cloud retraining | ✅ per-patient adaptation | ◐ | ✗ fixed models win | ◐ |
-| Tolerates 130nm economics (node BOM $50–500, not $1–5) | ✅✅ industrial sensor nodes are $100–1,000 [verify] | ✗ cost/mm² pressure | ◐ | ✗✗ | ✅ |
-| Mature node is an ASSET (temp range, latch-up robustness, longevity/obsolescence guarantees) | ✅✅ | ◐ | ✅ | ✗ | ✅✅ |
-| Fault monitor/SECDED/watchdog valued | ✅ IEC 61508-adjacent | ✅ IEC 62304 | ◐ | ✗ | ✅✅ |
-| Constant-time/security story valued | ◐ (firmware integrity, tamper) | ✅ (privacy) | ◐ | ✗ | ✅✅ |
-| Certification burden reachable for a small team | ✅ SIL-2-adjacent, often none for advisory monitoring | ✗ medical device clearance | ✅ | ✅ | ✗ program-gated |
-| Competitive pressure at the node level | ◐ (see §3.4) | ✗ brutal (22nm MCU+NPU) | ✅ low | ✗✗ | ◐ incumbent primes |
-| Founder synergy (Upcheck/SAVAI sensing ecosystem, India industrial base) | ✅ | ✗ | ✅✅ | ✗ | ◐ (AEGIS occupies it) |
-| Public benchmark dataset exists for credible proof | ✅✅ CWRU/IMS/Paderborn | ✅ MIT-BIH | ✗ | ✅ GSC | ✗ |
+| Signal band fits kHz sensing + ~100 MHz | ✅ vibration ≤20 kHz | ✅ ECG ≤1 kHz | ✅ | ✅ 16 kHz | ✅ |
+| Event-driven/always-on fits SNN+TTFS | ✅ | ✅ | ✅ | ✅ | ✅ |
+| On-chip STDP a real differentiator | ✅✅ per-machine baselines differ | ✅ per-patient | ◐ | ✗ fixed models win | ◐ |
+| Tolerates 130nm economics | ✅ node BOM $100-1000 `[verify]` | ✗ cost/mm² pressure | ◐ | ✗✗ | ✅ |
+| Mature node is an ASSET (temp/longevity) | ✅✅ | ◐ | ✅ | ✗ | ✅✅ |
+| Fault/SECDED/watchdog valued | ✅ | ✅ | ◐ | ✗ | ✅✅ |
+| Cert burden reachable for a small team | ✅ often advisory-only | ✗ medical clearance | ✅ | ✅ | ✗ program-gated |
+| **Competition at the node level** | **◐ CONTESTED — Xylo IMU ships here (F-1)** | ✗ brutal (22nm MCU+NPU) | ✅ low | ✗✗ | ◐ incumbent primes |
+| Founder synergy (Upcheck/SAVAI, India base) | ✅ | ✗ | ✅✅ | ✗ | ◐ (AEGIS occupies it) |
+| Public benchmark dataset exists | ✅✅ CWRU (F-4) | ✅ MIT-BIH | ✗ | ✅ GSC | ✗ |
 
-Industrial condition monitoring wins on the three axes that are *hard* for
-competitors to copy and *native* to this architecture: per-node on-chip
-learning, always-on event-driven power posture, and mature-node industrial
-robustness. Agri/aqua sensing is deliberately folded in as a *deployment
-channel* (an Upcheck pond aerator or pump is a rotating machine — the same
-SoC and firmware apply verbatim), not a separate target.
+Industrial CM still wins — it is the only column where on-chip learning,
+event-driven power, and mature-node robustness are all *bought*. The honest
+change from v1.0: the competition cell dropped from ✅ to ◐. That is not a
+reason to abandon it; it is the reason the positioning (RISK R-03) must be
+"complete SoC + auditable evidence + sovereignty," never "we have an SNN."
 
 ## 3. Industry breakdown
 
-### 3.1 The problem being bought
-Unplanned downtime of rotating machinery. Bearing failures are the single
-largest cause of motor failure (~40–50% of induction-motor failures in the
-classic IEEE/EPRI surveys [verify]). Plants pay for early warning:
-detect a bearing defect weeks before failure → schedule maintenance instead
-of losing a production line. Predictive-maintenance spend is a
-$10B+-class market growing at ~25–30% CAGR [verify]; the sensing tier
-(wireless vibration nodes) is the fastest-growing slice as plants
-retrofit brownfield equipment that has no built-in instrumentation.
+### 3.1 The problem
+Unplanned downtime of rotating machinery. Bearings are consistently the
+largest single failure category in the classic IEEE-IAS / EPRI motor-
+reliability surveys — **but the exact share is contested: ≈24–42% depending
+on denominator (% of failed motors vs % of failures) and study** (F-14). Do
+not quote a single percentage; quote the range and the ambiguity. The raw
+EPRI counts (4,797 utility motors; 1,227 failures across 872 motors) are
+real. Predictive-maintenance market size and CAGR: **`[verify]` — no figure
+survived verification (F-15)**; RISK R2-T3 sources them from named firms
+before any pitch.
 
 ### 3.2 Value chain and where Azmuth sits
 ```
 MEMS/piezo accelerometer → [SENSOR-NODE SoC ← AZMUTH] → LPWAN/BLE gateway
       → plant historian/CMMS → analytics dashboard → maintenance decision
 ```
-Azmuth is the **smart-sensor-node SoC**: it sits between the accelerometer
-and the radio, and its entire job is to make the radio (the dominant energy
-consumer) almost never transmit. Raw 12 kHz vibration streaming murders a
-battery; a node that computes locally and transmits only classifications/
-anomalies achieves the 3–5-year battery life the industry demands [verify].
-This is precisely the always-on-compute/rare-event-output shape that the
-SNN + power-orchestrator architecture exists for.
-
-The deliverable product tiers (RISK_PLAN R3): evaluation kit (FPGA/board +
-SDK + benchmark), silicon SoC, and the evidence package (the moat — see
-RISK_PLAN R-01).
+Azmuth is the smart-sensor-node SoC between accelerometer and radio; its job
+is to make the radio (dominant energy consumer) almost never transmit —
+compute locally, transmit only classifications/anomalies. Multi-year battery
+life on a duty-cycled 130nm-class part is **plausible by precedent**: the
+MSP430 (130nm-era ULP MCU) hits 1.3 µA standby / 0.1 µA off and a documented
+10-year RTC at 1.52 µA average (F-13) — but that is precedent that the class
+works, not a measurement of Azmuth; Azmuth's own sleep floor must be proven
+by its power evidence (TAPEOUT P3-T5 / RISK R2-T4).
 
 ### 3.3 Buyer and requirements profile
 - **Buyer:** sensor-node OEMs and industrial-IoT integrators (not end
-  plants). India angle: Make-in-India industrial automation suppliers,
-  plus founder-adjacent channels (aquaculture pump/aerator monitoring as a
-  first captive deployment).
-- **Hard requirements:** −40…+85 °C operation; multi-year battery life at
-  duty-cycled operation (average node power budget ~1 mW-class [verify]);
-  10+-year part availability (130nm longevity is an asset here);
-  deterministic sample-to-decision latency (plant-safety interlocks);
-  watchdog/self-test (nodes are unattended); firmware update integrity.
-- **Soft requirements that become differentiators:** per-machine baseline
-  learning without cloud round-trips (STDP), spectral feature quality
-  (EML exp/ln for log-band energy and envelope analysis), on-node event
-  logging that survives power loss (NVM controller + SPI flash).
-- **Standards context (advisory monitoring, not control):** ISO 10816/20816
-  vibration severity zones; ISO 13373 condition-monitoring practice;
-  ISO 15243 bearing damage taxonomy; IEC 60068 environmental. Functional
-  safety (IEC 61508) only if the node gates an interlock — positioned as
-  "designed to" methodology per TAPEOUT §D-12.
+  plants). India angle: Make-in-India automation suppliers; founder-adjacent
+  aquaculture pump/aerator monitoring as a captive first deployment.
+- **Hard requirements:** −40…+85 °C; multi-year battery at duty-cycled
+  operation (avg node power ~1 mW-class `[verify]`); 10+-year part
+  availability (130nm longevity is an asset); deterministic sample-to-
+  decision latency; watchdog/self-test (unattended nodes); firmware update
+  integrity.
+- **Differentiators:** per-machine baseline learning without cloud round-
+  trips (STDP); on-node event logging surviving power loss (NVM controller +
+  SPI flash). Feature-front-end quality is an OPEN question — the confirmed
+  SNN-bearing literature uses Local Mean Decomposition, NOT simple features
+  (F-6, F-7), so "EML exp/ln features are sufficient" is unproven and must be
+  demonstrated, not claimed.
+- **Standards context (advisory monitoring, not control):** ISO 20816 /
+  ISO 10816 vibration severity, ISO 13373 practice, ISO 15243 bearing damage
+  taxonomy — **all `[verify]` against ISO directly (F-17)**; the
+  10816→20816 supersession was not verifiable from a primary source. IEC
+  61508 only if the node gates an interlock ("designed to" phrasing only).
 
-### 3.4 Competitive landscape (fact base to be cited in RISK R2-T3)
-| Alternative | What it is | Where it beats Azmuth | Where Azmuth differs |
-|---|---|---|---|
-| MCU + MEMS-with-MLC (ST ISM330 class) | Cortex-M + accelerometer with built-in decision tree | Cost, maturity, ecosystem | Decision trees can't do spectral/temporal patterns; no on-node learning |
-| Modern MCU+NPU (GAP9, Cortex-M55+U55 class, 22–40nm) | DSP/NPU edge-AI | Energy per MAC (better node), tooling | Frame-based, always-on cost is duty-cycled polling, no per-node learning, no constant-time story |
-| Neuromorphic startups (Innatera Pulsar, SynSense Xylo, BrainChip Akida) | Commercial SNN silicon | Shipping silicon, advanced nodes, funded ecosystems | Azmuth is a *complete RISC-V SoC* (CPU+SNN+math+NVM+debug in one), open-flow auditable, evidence-reproducible, India-sovereign path |
-| Cloud/gateway analytics on raw streams | Compute at the edge gateway | No node silicon needed | Battery/radio economics of streaming; latency; connectivity dependence |
+### 3.4 Competitive landscape (the corrected core)
+| Alternative | What it is | Where it beats Azmuth | Where Azmuth differs | Evidence |
+|---|---|---|---|---|
+| **SynSense Xylo IMU** | **Digital SNN + HDK, ships since 2023, explicitly for vibration CM at <500 µW** | **Shipping silicon on advanced node; funded; the target's incumbent** | Xylo is an SNN *inference* accelerator; Azmuth is a *complete RISC-V SoC* (CPU+SNN+math+NVM+debug), open-flow auditable, on-chip STDP learning, sovereign path | **F-1 (CONFIRMED)** |
+| ST ISM330DHCX + MLC | MEMS + on-sensor ML core | Cost, maturity, ecosystem | Stock MLC example = 26 Hz, 3 coarse classes only (F-2); can't do kHz fault diagnosis turnkey (though NanoEdge AI can, custom) | F-2 (CONFIRMED) |
+| Innatera Pulsar / BrainChip Akida | Commercial neuromorphic | Shipping, funded | Same completeness/sovereignty argument as Xylo | specs `[verify]` (F-3) |
+| GAP9 / Cortex-M55+U55 | DSP/NPU edge-AI (22-40nm) | Energy/MAC, tooling | Frame-based, no per-node learning, no constant-time story | `[verify]` (F-3) |
+| Gateway analytics on raw streams | Compute at the gateway | No node silicon | Battery/radio economics of streaming; latency; connectivity dependence | — |
 
-**Honest weaknesses (published, per the trust doctrine):** no silicon yet;
-130nm loses energy-per-operation to 22nm rivals on *active* compute (the
-counter is sleep-state dominance + event-driven duty cycle — must be
-*proven* with the P3-T5/F7 energy evidence, not asserted); SNN accuracy on
-industrial data must be demonstrated, not assumed (F7 exists to settle
-this); single-person vendor risk (RISK R-04).
+**Honest weaknesses (published, per the trust doctrine):** (1) a funded
+competitor already ships in the exact niche (F-1) — Azmuth's edge is
+completeness+auditability+sovereignty, not novelty; (2) no silicon yet;
+(3) 130nm loses energy-per-op to 22nm rivals on *active* compute — the
+counter (sleep dominance + duty cycle) is plausible (F-13) but must be
+*measured*, not asserted; (4) SNN accuracy on leakage-safe bearing splits is
+unproven (F-8) and the feature front-end may need more than EML provides
+(F-7); (5) single-person vendor (RISK R-04).
 
 ### 3.5 Architecture-to-requirement map (the pitch skeleton)
-| Azmuth feature | Industry requirement it serves |
-|---|---|
-| SNN-256 TTFS + WTA | Always-on anomaly/fault classification at µW-class average duty |
-| On-chip STDP (6 policies) | Per-machine baseline adaptation; drift tracking without cloud retraining |
-| EML Q16.16 exp/ln, constant-latency, memoized | Log-band energies, envelope spectra, kurtosis/crest features at fixed cycle cost |
-| Deterministic core + constant-time units + policy determinism | Bounded sample-to-decision latency; WCET evidence for interlock-adjacent use |
-| NVM controller (SECDED, wear-leveling) + SPI-flash path | Event/trend logging that survives power loss in unattended nodes |
-| Per-tile power orchestration + body-bias | Multi-year battery life posture; leakage control across −40…+85 °C |
-| Fault monitor + watchdog + SECDED + MBIST | Unattended-node self-integrity; IEC 61508-methodology story |
-| RISC-V + real Debug Module + pinned toolchain | OEM firmware ecosystem, no vendor-lock ISA |
+| Azmuth feature | Requirement served | Caveat |
+|---|---|---|
+| SNN-256 TTFS + WTA | Always-on fault classification at low duty | accuracy TBD under leakage-safe splits (F-8) |
+| On-chip STDP (6 policies) | Per-machine baseline adaptation without cloud | the *differentiator vs Xylo*; must be demonstrated (R2-T2) |
+| EML Q16.16 exp/ln, constant-latency, memoized | Log-band energies, envelope features at fixed cost | feature sufficiency unproven (F-7) |
+| Deterministic core + constant-time + policy determinism | Bounded sample-to-decision latency; WCET evidence | core fmax target unvalidated (F-12) |
+| NVM controller (SECDED, wear-leveling) + SPI flash | Event/trend logging surviving power loss | ships on SRAM-emu, not ReRAM (F-9; DECISION-011) |
+| Per-tile power + body-bias | Multi-year battery posture | precedent-plausible (F-13); prove with UPF evidence |
+| Fault monitor + watchdog + SECDED + MBIST | Unattended-node self-integrity | — |
+| RISC-V + real Debug Module + pinned toolchain | OEM firmware ecosystem, gdb-into-the-chip demo | a real edge vs closed neuromorphic parts |
 
-## 4. The benchmark workload (definition — executable spec in FPGA_PLAN F7)
+## 4. The benchmark (definition — executable spec in FPGA_PLAN F7)
 
 **Dataset:** CWRU Bearing Data Center corpus — drive-end accelerometer,
-12 kHz sampling (48 kHz variant available), SKF 6205 bearings with
-EDM-seeded faults (inner race / outer race / ball; 0.007″/0.014″/0.021″),
-four load conditions (0–3 hp, 1730–1797 rpm). Standard 10-class task
-(normal + 9 fault×size classes). Secondary generalization set: Paderborn
-or NASA IMS run-to-failure corpus for the "did it detect degradation
-early?" narrative.
+12 kHz (48 kHz variant available), SKF 6205, seeded inner-race/outer-race/
+ball faults × 0.007″/0.014″/0.021″, 0–3 hp loads. Confirmed de-facto standard
+(F-4). Commit the exact file list + preprocessing + split to
+`docs/references/cwru_manifest.md`.
 
-**Pipeline under test (all on Azmuth):**
-1. **Ingest** — 12 kHz frames (2048 samples/frame) into SRAM, executive-
-   scheduled (TOOLCHAIN S7).
-2. **Features (EML)** — per frame: log band energies over bearing-
-   characteristic bands (BPFO/BPFI/BSF/FTF harmonics derived from rpm),
-   RMS, kurtosis, crest factor — the exp/ln-heavy math the EML unit
-   exists for, at contract-fixed cycle cost.
-3. **Encode** — feature vector → TTFS spike latencies.
-4. **Classify (SNN-256)** — WTA class output; STDP leg: baseline
-   adaptation run demonstrating per-machine tuning on normal-only data
-   (novelty detection framing) — the differentiator demo.
-5. **Log (NVM)** — classification events + trend counters through the NVM
-   controller.
+**Two non-negotiable protocol rules from the research:**
+1. **Bearing-independent splits (F-5):** training and test use *different
+   physical bearings*. The common ≥99% numbers are leakage-inflated; Azmuth
+   reports leakage-safe accuracy or the number is not credible.
+2. **Novelty detection is the primary metric (F-8):** train on normal-only
+   data, measure fault-detection ROC after simulated baseline drift — this
+   is the STDP-differentiated, actually-bought capability. 10-class accuracy
+   is secondary and reported at whatever value it lands, with the model-size
+   context, never gated at a hoped ≥95%.
+
+**Pipeline under test (all on Azmuth):** 12 kHz frame ingest → EML feature
+extraction (log band energies over bearing characteristic frequencies
+BPFO/BPFI/BSF/FTF from rpm, RMS, kurtosis, crest) → TTFS spike encoding →
+SNN-256 WTA classify → NVM event log, under the S7 executive. **Feature-
+adequacy caveat (F-7):** if EML primitives prove insufficient vs an
+LMD-class front-end, that gap is a finding to publish, and either an
+engineering task or an honest limitation — not something to paper over.
 
 **Published metrics (evidence files, per TAPEOUT §A.7):**
-- Accuracy: 10-class % on the standard split; novelty-detection ROC for
-  the STDP leg. Reported against the Python golden model (must match RTL
-  — P3-T3 gate) and against a documented MCU software baseline.
-- **Cycles per frame, per stage** (ingest/features/inference/log) and
-  frames-per-second headroom at 100 MHz — cycles first, always.
-- **Jitter = 0** across frames (the determinism headline; legitimate only
-  because BUG-A3's fix made memo hits constant-latency — cite the P3-T1
-  campaign).
-- Xcew value: cycles in pure-RV32IMC-software vs EML-accelerated vs
-  EML+SNN configurations (TOOLCHAIN S9-T1's three builds).
-- Energy posture: FPGA cannot measure ASIC power — publish activity
-  proxies (spike counts, sleep-state residency under the executive,
-  memo-hit rates) + UPF-based simulation estimates, each labeled as such.
+- Novelty ROC (primary) + 10-class accuracy (secondary) under **bearing-
+  independent splits**, vs the Python golden model (RTL must match — P3-T3)
+  and a documented MCU software baseline.
+- Cycles per frame, per stage; frames/s headroom at the achieved fmax
+  (cycles first, always).
+- Jitter = 0 across frames (legitimate only because BUG-A3's fix made memo
+  hits constant-latency — cite the P3-T1 campaign).
+- Xcew value: cycles across three builds (pure RV32IMC software / EML-accel /
+  EML+SNN) — TOOLCHAIN S9-T1.
+- Energy posture: FPGA can't measure ASIC power — publish activity proxies
+  (spike counts, sleep residency, memo-hit rates) + UPF simulation estimates
+  vs the <500 µW Xylo bar (F-1), each labelled as estimate.
 
-**Success gates (honest):** ≥95% 10-class accuracy on the standard CWRU
-split (literature-typical for far heavier models — if the SNN lands lower,
-publish the number, the model-size context, and the novelty-detection
-result, which is the actually-bought capability); zero cycle jitter;
-≥5× feature-stage speedup from EML vs soft-float [verify against
-measurement — replace with the real number when it exists].
+**Success framing (honest, not gated on hope):** report the leakage-safe
+novelty ROC and 10-class accuracy at whatever value they land; zero cycle
+jitter; the EML/SNN cycle deltas. If accuracy trails heavier models, publish
+it with the 256-neuron context and let the novelty-detection result + the
+determinism + the completeness story carry the pitch. `[verify]` any target
+number against F7.1's measured golden-model result before it enters the
+trust ledger.
 
 ## 5. What this analysis binds
-
-- FPGA_PLAN F7 implements §4 verbatim — no substitute datasets or tasks.
-- RISK_PLAN R2/R3 positioning artifacts cite this document and replace
-  every [verify] with sourced data.
-- Any pivot (e.g. to the biosignal fallback) is a DECISIONS.md entry with
-  rationale, not a silent re-aim.
+- FPGA_PLAN F7 implements §4 verbatim, INCLUDING the bearing-independent-
+  split and novelty-primary rules — no leakage-inflated numbers.
+- RISK_PLAN R2/R3 cite this document and docs/RESEARCH_FINDINGS.md; every
+  `[verify]` is replaced with sourced data before any external use, and the
+  positioning leads with completeness/sovereignty vs Xylo, not novelty.
+- Any pivot (e.g. to the biosignal fallback) is a DECISIONS.md entry.

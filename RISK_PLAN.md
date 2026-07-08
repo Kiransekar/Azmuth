@@ -21,15 +21,20 @@
               git update-index --skip-worktree RISK_PLAN.md
   ============================================================================ -->
 
-# Azmuth — Risk-Closure Plan v1.0
+# Azmuth — Risk-Closure Plan v1.1
 
-**Premise (from INDUSTRY_TARGET.md):** 100 MHz @ 130nm is not a survival
-risk for the chosen market — vibration bands top out ~20 kHz; the node's
-job is event-driven inference and radio silence, not throughput. The real
-risks are trust, the "MCU-with-MLC is good enough" attack, neuromorphic
-incumbents shipping on better nodes, bus factor, market entry, and the
-unproven energy-posture claim. This plan closes what is closeable and
-shrinks what is not.
+**Premise (from INDUSTRY_TARGET.md v1.1 + docs/RESEARCH_FINDINGS.md):** a
+~100 MHz (or even 40–60 MHz — F-12) 130nm part is not a survival risk for
+the chosen market — vibration bands top out ~20 kHz; the node's job is
+event-driven inference and radio silence, not throughput. But the research
+sharpened the real risks: the target niche is **already occupied** by a
+shipping competitor (SynSense Xylo IMU at <500 µW — F-1), so R-03 is upgraded
+to CRITICAL; the CWRU benchmark must use **leakage-safe splits** (F-5) or its
+numbers convince no one; the energy-posture claim (F-13 makes it plausible,
+not proven) must be measured; and the India DLI funding window is **currently
+closed** pending DLI 2.0 (F-16). This plan closes what is closeable and
+shrinks what is not — leading always with completeness + auditability +
+sovereignty, the ground Xylo cannot contest.
 
 ---
 
@@ -39,7 +44,7 @@ shrinks what is not.
 |----|------|----------|--------------------:|--------------------------|
 | R-01 | **Trust deficit** — no third party has reason to believe the chip works; the audit showed claims ran ahead of evidence | CRITICAL | ~70% (evidence machine) | Time-in-market |
 | R-02 | **"Good-enough MCU" attack** — ST MLC-class sensors and 22nm MCU+NPU undercut a 130nm custom SoC | HIGH | ~60% (positioning + energy-posture proof) | Buyer rationality varies |
-| R-03 | **Neuromorphic incumbent gravity** — Innatera/SynSense/BrainChip ship silicon on modern nodes with funded ecosystems | HIGH | ~70% (compete on completeness + evidence, not on the SNN alone) | Their funding/velocity |
+| R-03 | **Neuromorphic incumbent gravity — a competitor already ships in Azmuth's EXACT niche.** SynSense Xylo IMU (HDK Sept 2023) explicitly markets <500 µW always-on vibration-based predictive maintenance (RESEARCH_FINDINGS F-1); Innatera/BrainChip ship on modern nodes too. This is no longer "incumbents nearby" — it is "the target is occupied" | **CRITICAL** (upgraded from HIGH) | ~65% (compete on completeness + on-chip STDP + auditability + sovereignty, NOT on "an SNN for vibration") | Their funding/velocity; being second |
 | R-04 | **Bus factor = 1** — OEMs won't design in a single-person vendor | CRITICAL | ~40% (survivability artifacts) | Team formation is human work |
 | R-05 | **Market entry** — no anchor OEM, no grant, no pilot | CRITICAL | ~50% (packages, demo logistics) | Founder walks into rooms |
 | R-06 | **No field heritage** — "has it run in a plant?" is the first OEM question | HIGH | ~50% (heritage ladder) | Calendar time |
@@ -164,8 +169,12 @@ sample-to-decision latency distribution (jitter!), accuracy-per-model-size
 on CWRU, adaptation-after-drift (R2-T2 scenario), always-on average duty.
 Include at least one MCU software baseline (same C on a Cortex-M4 board)
 and one published-numbers comparison for the neuromorphic parts (their own
-datasheets, cited). Publish methodology + raw data; if we lose an axis,
-publish that too and file the engineering task.
+datasheets, cited) — **explicitly benchmark against the SynSense Xylo IMU's
+<500 µW figure (F-1) as the power bar**, honestly noting Azmuth is on a
+mature node and competes on completeness/learning/auditability, not µW/MAC.
+Accuracy comparisons MUST use leakage-safe bearing splits (F-5) — a win on a
+leaky split convinces no informed reviewer. Publish methodology + raw data;
+if we lose an axis, publish that too and file the engineering task.
 
 ════════════════════════════════════════════════════════════════════════════
 ## PHASE R4 — Shrink R-04: bus factor  [~2 weeks + ongoing]
@@ -199,11 +208,18 @@ evaluation tier if the company stops.
 
 ### R5-T1 [OPUS prep + HUMAN] Grant/scheme package
 India routes for an industrial-IoT chip: DLI (Design-Linked Incentive)
-scheme, C-DAC/MeitY programs, iDEX if a defense-adjacent CM use-case
-appears, state industrial-automation funds. Technical volume auto-assembled
-from the Evidence Book; milestone plan derived from remaining TAPEOUT
-phases; kept perpetually current so any opening is answerable inside a
-week. Human registers, submits, pitches.
+scheme — REAL and structured (C-DAC is the nodal agency under MeitY/ISM;
+5-year incentives, deployment incentive 6%→4% of net sales, ceiling ₹30 Cr;
+RESEARCH_FINDINGS F-16) — **but the application window is currently CLOSED**
+(DLI 1.0 ran Jan 2022–Dec 2024; the ism.gov.in portal shows "Application
+Closed" as of 12.06.2026; DLI 2.0 is in redesign). So: **prepare the package
+now, monitor for the DLI 2.0 relaunch, do not assume it is open.** Also
+track C-DAC/MeitY MPW programs (India ran 5 domestic MPW runs in the past 12
+months — SCL/C-DAC, feeds R-09) and state industrial-automation funds; iDEX
+only if a defense-adjacent CM use-case appears. Technical volume auto-
+assembled from the Evidence Book; kept perpetually current so any opening is
+answerable inside a week. Human registers, submits, pitches when a window
+opens.
 
 ### R5-T2 [SONNET] The pitch stack
 From the R2-T2 recording + Evidence Book: 10-slide technical pitch

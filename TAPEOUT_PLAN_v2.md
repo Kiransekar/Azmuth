@@ -30,13 +30,13 @@
 | Field | Value |
 |---|---|
 | Target | Fabricable, honest, fully traceable RV32IMC edge-AI SoC (EML + SNN + NVM-ready + power mgmt + security) |
-| Process | **SkyWater SKY130**, `sky130_fd_sc_hd` std cells, open flow (ChipIgnite-class per DECISION-006). "TSMC 130nm" language is removed everywhere — no PDK access exists (no liberty file has ever been in the repo; see BUG-A7) |
+| Process | **SkyWater SKY130**, `sky130_fd_sc_hd` std cells, open flow. "TSMC 130nm" language is removed everywhere — no PDK access exists (no liberty file has ever been in the repo; see BUG-A7) |
 | Tools | Icarus 12+, Verilator 5.x, Yosys 0.38+, OpenROAD 2.0+, SymbiYosys, OpenSTA, Magic, netgen, KLayout |
-| Signoff clocks | **Core 100 MHz (10.0 ns) · SNN 50 MHz (20.0 ns) · JTAG ≤10 MHz**, TT 025C 1v80, 300 ps uncertainty. **250/125 MHz is dead; never write it anywhere again** (BUG-A4: the M-extension is single-cycle combinational — physically unachievable at 4 ns in 130nm) |
-| Positioning | Always-on edge-AI sensing SoC for **industrial machine-condition monitoring** (see INDUSTRY_TARGET.md); constant-time + on-chip STDP learning are the differentiators |
-| Tapeout vehicle | ChipIgnite-class shuttle (DECISION-006); confirmed/re-scoped in P6-T1 |
+| Signoff clocks | **Core 100 MHz (10.0 ns) TARGET · SNN 50 MHz (20.0 ns) · JTAG ≤10 MHz**, TT 025C 1v80, 300 ps uncertainty. **250/125 MHz is dead; never write it anywhere again** (BUG-A4). NOTE: 100 MHz is an *unvalidated target*, not precedent — no verified SKY130 RV32IMC fmax datapoint exists (docs/RESEARCH_FINDINGS.md F-12); the P5 STA baseline may force a derate to ~40–60 MHz, which is acceptable for the target market (kHz sensing). Cycles are the currency; MHz is provisional until STA |
+| Positioning | Always-on edge-AI sensing SoC for **industrial machine-condition monitoring** (see INDUSTRY_TARGET.md v1.1 + docs/RESEARCH_FINDINGS.md). The niche is real but CONTESTED — SynSense Xylo IMU already ships there at <500 µW (F-1); Azmuth's differentiators are completeness (full RISC-V SoC), on-chip STDP learning, open-flow auditability, and India-sovereign supply — NOT "an SNN for vibration" |
+| Tapeout vehicle | **RE-OPEN (DECISION-006 is stale): Efabless/ChipIgnite shut down** (RESEARCH_FINDINGS F-11). Candidates: ChipFoundry ChipCreate SKY130 MPW, Tiny Tapeout, IHP SG13G2 (open 130nm, EU). Decided in P6-T1 |
 | Sibling plan set | TOOLCHAIN_PLAN.md (software), RISK_PLAN.md (market/risk), FPGA_PLAN.md (validation + industry benchmark), INDUSTRY_TARGET.md (positioning analysis) |
-| Plan version | v2.0 — task IDs are stable; mirrors the AEGIS plan-set discipline |
+| Plan version | v2.1 — task IDs stable; mirrors AEGIS discipline. v2.1 (2026-07-08) corrects v2.0 against verified research (docs/RESEARCH_FINDINGS.md): Efabless dead → vehicle re-opened (P6-T1); ReRAM reasoning fixed (BUG-A11/P4-T2); 100 MHz flagged unvalidated; positioning corrected for the Xylo competitor |
 
 ---
 
@@ -179,7 +179,7 @@ findings of 2026-07-08. Locate by content, not line number.
 | BUG-A8 | `tb/top_tb.v` | Port drift vs current top's AXI/debug-UART interface — `sim_top` may not exercise the real top | OPEN → P1-T6 |
 | BUG-A9 | `Makefile`/`cosim_v1.1` | cosim_v1.1 target is partly mock (generates JSON reports without simulating) | OPEN → P0-T3 (claim hygiene) + P2-T4 |
 | BUG-A10 | interconnect vs firmware | Interconnect decodes a 16-bit map (ROM 0x0000 / SRAM 0x1000 / EML 0x2000 / SNN 0x2100 / NVM 0x2200 / DM 0x5000) while `firmware/main.c` uses 0x00020000/0x21000/0x22000 and README shows a third variant. The truncation/scaling rule between core byte-addresses and the 16-bit compare is UNDOCUMENTED and unverified at region boundaries | OPEN → P1-T2 |
-| BUG-A11 | `rtl/nvm/` + README | "ReRAM controller" is behavioral only — no macro, no PDK NVM IP, and SKY130 has **no open ReRAM**. As written the NVM story cannot tape out | OPEN → P4-T2 (mandated re-scope) |
+| BUG-A11 | `rtl/nvm/` + README | "ReRAM controller" is behavioral only — no macro, no PDK NVM IP. CORRECTION (RESEARCH_FINDINGS F-9): SKY130 open ReRAM (`sky130_fd_pr_reram`) DOES exist, but its repo was **archived read-only 2026-04-18**, self-describes as "under development… does not guarantee the results," and has **no demonstrated shuttle tapeout**. So the NVM story cannot tape out on ReRAM — not because ReRAM is absent, but because the open ReRAM is experimental/unmaintained/unproven | OPEN → P4-T2 (mandated re-scope) |
 | BUG-A12 | README | EML exp/ln "<0.2% error" claim has no evidence file | OPEN → P3-T2 |
 | BUG-A13 | two-clock + JTAG | Real CDC synchronizers exist (`cdc_reset_sync`, `cdc_pulse_sync`, 4-phase req/ack) — good — but no formal CDC audit and no documented CDC constraints; JTAG adds a third domain | OPEN → P1-T7/P5-T3 |
 | BUG-A14 | repo root | Duplicate `CLAUDE.md`/`Claude.md` existed in cached listings (case-only difference — hazard on case-insensitive filesystems) | Verify + consolidate → P0-T2 |
@@ -538,15 +538,21 @@ TB drives both models with the same random stimulus.
 macros as blackboxes, no unresolved modules.
 
 ### P4-T2 [OPUS] NVM re-scope (BUG-A11) — mandated decision
-SKY130 has no open ReRAM. **Mandated: DECISION-011 =** the tapeout carries
+Open SKY130 ReRAM exists but is experimental, archived (2026-04-18), and has
+no proven shuttle tapeout (RESEARCH_FINDINGS F-9); a ReRAM shuttle path
+exists (ChipFoundry ChipCreate, "be among the first" — F-10) but is
+unproven for yield/maturity. **Mandated: DECISION-011 =** the tapeout carries
 the NVM **controller** (wear-leveling + SECDED + write buffer — the real IP)
 backed by an SRAM-emulation macro plus an off-die SPI-flash persistence
-path; the ReRAM cell array is documented as a licensing path (Weebit-class
-or foundry NVM at a commercial 130nm), NOT a claim about this chip.
-README/datasheet updated accordingly (tombstone per §A.7). The controller's
-TBs and formal (nvm_secded) remain fully valid — they test the controller.
-**Acceptance:** DECISION-011 recorded; docs updated; nvm TB suite green
-against the emulation backing.
+path; on-die ReRAM is documented as a **future/experimental path** (the open
+`sky130_fd_pr_reram` library or a commercial 130nm NVM licence), NOT a claim
+about this chip. **Optional stretch (only if P6-T1 picks a ReRAM-capable
+vehicle and schedule allows):** a small isolated ReRAM test structure as a
+de-risking experiment, explicitly flagged experimental — never on the
+controller's critical path. README/datasheet updated (tombstone per §A.7).
+The controller's TBs and formal (nvm_secded) remain fully valid.
+**Acceptance:** DECISION-011 recorded citing F-9/F-10; docs updated; nvm TB
+suite green against the emulation backing.
 
 ### PHASE 4 EXIT GATE
 Macros vendored+pinned · equivalence TBs green · synth elaborates with
@@ -605,12 +611,20 @@ area/fmax table live in README via link.
 ## PHASE 6 — P&R, DFT, signoff, tapeout  [~2–4 weeks]
 ════════════════════════════════════════════════════════════════════════════
 
-### P6-T1 [OPUS] Vehicle confirmation (human sign-off REQUIRED)
-DECISION-006 targets a ChipIgnite-class slot. Re-validate with honest P5
-area numbers: (a) full SoC (core+EML+SNN256+NVM-ctrl+power+debug) fits?
-(b) if not, descope ladder: SNN 256→64 tile, NVM-ctrl-only, single power
-domain — each rung priced in DECISIONS.md; (c) fallback = FPGA-only +
-second-source pitch (RISK_PLAN R-09). **BLOCKED until the human picks.**
+### P6-T1 [OPUS] Vehicle decision (human sign-off REQUIRED) — DECISION-006 is STALE
+**Efabless/ChipIgnite shut down** (RESEARCH_FINDINGS F-11); the old
+DECISION-006 slot no longer exists. Write a one-page comparison in
+DECISIONS.md (supersede 006) across the real 2025-2026 options:
+(a) **ChipFoundry ChipCreate SKY130 MPW** — successor to Efabless, full
+projects, ReRAM-capable (F-10); (b) **Tiny Tapeout** — tile-scale, cheap,
+recovered post-Efabless (F-11), fits only a heavily descoped demo; (c) **IHP
+SG13G2** — open 130nm BiCMOS, EU shuttle, different PDK (porting cost);
+(d) defer silicon, FPGA-only + SCL-180 second-source pitch (RISK R-09).
+Re-validate against honest P5 area numbers and the descope ladder: full SoC
+(core+EML+SNN256+NVM-ctrl+power+debug) → SNN 256→64 → NVM-ctrl-only → single
+power domain, each rung priced. Include cost, calendar, and what each proves
+to a customer. **BLOCKED until the human picks.** All P6 tasks below assume
+the chosen vehicle; scale per decision.
 
 ### P6-T2 [OPUS] OpenROAD flow bring-up
 Treat existing `openlane/`/`pnr/` configs as untested. floorplan (SRAM
